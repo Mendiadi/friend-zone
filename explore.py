@@ -1,9 +1,10 @@
 import enum
-import hashlib
-import os
 import threading
-
 import tkinter as tk
+
+import requests
+
+import api_fecth
 
 def load_assets():
 
@@ -28,6 +29,7 @@ class ComponentCreator:
 
     @staticmethod
     def create_post_label(root, h1, text):
+        root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
         label = tk.Label(can, text=h1, font="none 20 bold", height=0, width=len(h1) + 1)
         txt = tk.Label(can, text=text, font="none 12", height=0, width=len(text) + 1, bg="red")
@@ -63,8 +65,10 @@ class ExploreWin(BasicWin):
 
     def __init__(self, win, geometry, app):
         super(ExploreWin, self).__init__(win, geometry, app)
+        self.logged_user = self.app.user
         self.second_frame = None
-
+        self.post_data = tk.StringVar()
+        self.add_post_entry = None
         self.load()
 
     def update_win(self, my_canvas):
@@ -93,10 +97,11 @@ class ExploreWin(BasicWin):
 
         my_canvas.create_window((0, 0), window=second_frame, anchor="nw")
         btn = tk.Button(second_frame, text="create",
-                        command=lambda: self.onclick(my_canvas, second_frame, "my post",
-                                                     "im love eat bananas in the sea"))
+                        command=lambda: self.onclick(my_canvas, second_frame))
         btn.pack()
         ComponentCreator.create_text_label(second_frame, "Your Feed").pack()
+        self.add_post_entry = ComponentCreator.create_entry(second_frame,self.post_data)
+        self.add_post_entry.pack()
 
 
 
@@ -104,8 +109,8 @@ class ExploreWin(BasicWin):
         for post in self.app.posts:
             post.pack()
 
-    def onclick(self, c, root, h1, text):
-        label = ComponentCreator.create_post_label(root, h1, text)
+    def onclick(self, c, root):
+        label = ComponentCreator.create_post_label(root, self.logged_user, self.post_data.get())
         self.app.posts.append(label)
         self.update_win(c)
         self.reload()
@@ -175,17 +180,20 @@ class App:
     def __init__(self):
         self.state = AppStates.LOGIN
         self.win = tk.Tk()
-
+        self.user = None
         self.root = LoginWin(self.win, "1000x1000", self)
         self.root.load()
         self.posts = []
 
     def login(self, email, password):
-        hash = hashlib.md5(password.encode())
+
         # requests login
         # response 200 -> return ok
         # response bad return not ok
-        print(email, hash.hexdigest())
+        with api_fecth.UsersAPI(requests.Session()) as session:
+            res = session.login(email,password)
+        print(res)
+        self.user = email
         return 1
 
     def update_content(self):
