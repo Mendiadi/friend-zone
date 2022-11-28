@@ -30,12 +30,20 @@ class ComponentCreator:
         return label
 
     @staticmethod
-    def create_post_label(root, h1, text):
+    def create_post_label(root, h1, text, func=None, post_id=None):
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
         label = tk.Label(can, text=h1, font="none 20 bold", height=0, width=len(h1) + 1)
         txt = tk.Label(can, text=text, font="none 12", height=0, width=len(text) + 1, bg="red")
         txt.place_configure(x=100, y=100)
+        print(func.__name__)
+
+        def wrap():
+            print(func.__name__)
+            func(post_id)
+
+        btn = tk.Button(can, text="del", command=wrap)
+        btn.place_configure(x=470, y=1)
         label.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
         return can
@@ -68,10 +76,13 @@ class ExploreWin(BasicWin):
 
     def __init__(self, win, geometry, app):
         super(ExploreWin, self).__init__(win, geometry, app)
+        self.my_canvas = None
+        self.posts = []
         self.logged_user = self.app.user
         self.second_frame = None
         self.post_data = tk.StringVar()
         self.add_post_entry = None
+        self.second_frame = None
 
     def update_win(self, my_canvas):
         self.win.update()
@@ -102,18 +113,44 @@ class ExploreWin(BasicWin):
                         command=lambda: self.onclick(my_canvas, second_frame))
         btn.pack()
         ComponentCreator.create_text_label(second_frame, "Your Feed").pack()
+        self.my_canvas = my_canvas
+        self.second_frame = second_frame
         self.add_post_entry = ComponentCreator.create_entry(second_frame, self.post_data)
         self.add_post_entry.pack()
+        self.fetch_all_posts()
 
-    def reload(self, ):
-        for post in self.app.posts:
-            post.pack()
+    def fetch_all_posts(self, ):
+        for i, post in enumerate(self.app.posts):
+            if i > 25:
+                break
+            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
+                                                   self.delete_post_onclick, post.post_id)
+            self.posts.append(p)
+            p.pack()
+        self.update_win(self.my_canvas)
+
+    def refresh_posts(self):
+        for post in self.posts:
+            post.destroy()
+        self.fetch_all_posts()
+
+    def delete_post_onclick(self, post_id):
+        print(post_id)
+        if self.app.delete_post(post_id):
+            self.app.posts = self.app.get_posts(self.app.user)
+            self.refresh_posts()
 
     def onclick(self, c, root):
-        label = ComponentCreator.create_post_label(root, self.logged_user, self.post_data.get())
-        self.app.posts.append(label)
+        # c means canvas to update scrollbar
+        code, post = self.app.create_post(self.post_data.get())
+        if not code:
+            return
+        label = ComponentCreator.create_post_label(root, post.user_email, post.text,
+                                                   self.delete_post_onclick, post.post_id)
+        self.posts.append(label)
+        self.app.posts = self.app.get_posts(self.app.user)
+        self.fetch_all_posts()
         self.update_win(c)
-        self.reload()
 
 
 class RegisterWin(BasicWin):
@@ -252,6 +289,14 @@ class App:
         self.root.load()
         self.posts = []
 
+    def delete_post(self, post):
+        with api_fecth.UsersAPI(requests.session()) as session:
+            res = session.delete_post(post)
+            print(res[0])
+            if res[1] == 200:
+                return 1
+            return 0
+
     def register(self, email, password, re_password):
         if password != re_password:
             return 0
@@ -262,6 +307,26 @@ class App:
         if type(res) == str:
             return 0
         return 1
+
+    def create_post(self, text):
+        from api_fecth import CreatePost, Post
+        post = CreatePost(text)
+        with api_fecth.UsersAPI(requests.session()) as session:
+            res = session.create_post(post, self.user)
+            if type(res) == Post:
+
+                return 1, res
+            else:
+                return 0, res
+
+    def get_posts(self, email):
+        with api_fecth.UsersAPI(requests.session()) as session:
+            res = session.get_posts_by_user(email)
+            if type(res) == list:
+                return res
+            else:
+                print(res)
+                return []
 
     def login(self, email, password):
 
@@ -284,7 +349,10 @@ class App:
         if self.state == AppStates.EXPLORE and type(self.root) != ExploreWin:
             self.root.kill()
             self.root = ExploreWin(self.win, self.MAXSIZE, self)
+            self.posts = self.get_posts(self.user)
+            print(self.posts)
             self.root.load()
+
         elif self.state == AppStates.REGISTER and type(self.root) != RegisterWin:
             self.root.kill()
             self.root = RegisterWin(self.win, self.MAXSIZE, self)
@@ -298,6 +366,3 @@ class App:
 def run_app():
     app = App()
     app.root.mainloop()
-
-
-

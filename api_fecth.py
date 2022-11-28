@@ -10,6 +10,11 @@ class Model:
 
 
 @dataclasses.dataclass
+class CreatePost(Model):
+    text: str
+
+
+@dataclasses.dataclass
 class Post(Model):
     post_id: int
     text: str
@@ -50,13 +55,22 @@ class UsersAPI(API):
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
 
-    def create_post(self, post_data: Post, user):
+    def create_post(self, post_data: CreatePost, user):
         res = self._session.post(self.base_url + f"/{user}/post", json=post_data.to_json())
-        print(res.text)
+        if res.ok:
+            return Post(**res.json())
+        else:
+            return res.text
 
     def get_posts_by_user(self, user):
         res = self._session.get(self.base_url + f"/{user}/post")
-        print(res.text)
+        if res.ok:
+            return [Post(**post) for post in res.json()['posts']]
+        return res.text
+
+    def delete_post(self, post_id):
+        res = self._session.delete(self.base_url + f"/post/delete/{post_id}")
+        return res.text, res.status_code
 
 
 if __name__ == '__main__':

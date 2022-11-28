@@ -55,7 +55,7 @@ class DataBase:
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
-            print(post_obj.__dict__)
+
             if not db.query_filter_by(post, "post_id", post_obj.post_id, first=True):
                 db.insert_to(post, post_obj)
                 code = 1
@@ -81,7 +81,7 @@ class DataBase:
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
             user_ = db.query_filter_by(user, "email", email, first=True)
-        print(user_)
+
         return user_
 
     def get_posts_by_user(self, user_email):
@@ -91,3 +91,16 @@ class DataBase:
             users = db.query_filter_by(post, "user_email", user_email)
 
         return users
+
+    def delete_post(self, post_id):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            post_ = db.query_filter_by(post, "post_id", post_id, first=True)
+            if post_:
+                db.query_delete_by(post, ("post_id", post_id))
+                code = 1
+            else:
+                code = 0
+            db.commit()
+        return code

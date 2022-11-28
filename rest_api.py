@@ -35,27 +35,40 @@ def login():
         return flask.make_response(flask.jsonify({"error": "user pass wrong"}), 400)
     return flask.make_response(flask.jsonify({"login": "ok"}), 200)
 
-@app.route("/<user_>/post",methods=["POST"])
+
+@app.route("/<user_>/post", methods=["POST"])
 def create_post(user_):
     user_from_db = db.get_user(user_)
     if not user_from_db:
         return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
-    post_data = database.post(**flask.request.json)
+    post_data = database.post(None, flask.request.json['text'], None)
     post_data.post_id = db.AUTO_INC()
     post_data.user_email = user_from_db.email
-    print(post_data.__dict__,"*********************************")
     if db.add_post(post_data):
-        return flask.make_response(flask.jsonify(post_data.__dict__),201)
+        return flask.make_response(flask.jsonify(post_data.__dict__), 201)
     return flask.make_response(flask.jsonify({"error": "post error"}), 400)
 
-@app.route("/<user_>/post",methods=["GET"])
+
+@app.route("/<user_>/post", methods=["GET"])
 def get_posts(user_):
     user_from_db = db.get_user(user_)
     if not user_from_db:
         return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
     posts = db.get_posts_by_user(user_from_db.email)
-    posts = [post.__dict__ for post in posts]
+    if not posts:
+        posts = []
+    else:
+        posts = [post.__dict__ for post in posts]
+
     return flask.make_response(flask.jsonify({"posts": posts}), 200)
+
+
+@app.route("/post/delete/<post_id>", methods=["DELETE"])
+def delete_post(post_id):
+    if db.delete_post(post_id):
+        return flask.make_response(flask.jsonify({"deleted": "ok"}), 200)
+    return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
