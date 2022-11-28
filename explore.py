@@ -1,11 +1,14 @@
 import enum
 import hashlib
+import os
 import threading
-import time
+
 import tkinter as tk
-from tkinter import ttk
 
+def load_assets():
 
+    img = tk.PhotoImage (file="assets/bg_login.png")
+    return img
 
 class AppStates(enum.Enum):
     LOGIN = "login"
@@ -16,9 +19,10 @@ class ComponentCreator:
     @staticmethod
     def create_text_label(root,text,color="white",fg_color="black"):
         label = tk.Label(root,text=text,
-                         font="none 12 bold",
+                         font="none 10 bold",
                          bg=color,
-                         fg=fg_color
+                         fg=fg_color,
+
                          )
         return label
 
@@ -34,11 +38,12 @@ class ComponentCreator:
 
     @staticmethod
     def create_entry(root,text_var):
-        return tk.Entry(root,textvariable=text_var,)
+        return tk.Entry(root,textvariable=text_var,font="none 20",bg="light blue",border=1)
 
     @staticmethod
-    def create_button(root,text,func,state):
-        return tk.Button(root, text=text, command=func, state=state,highlightbackground="blue")
+    def create_button(root,text,func,state,size):
+        return tk.Button(root, text=text, command=func, state=state,
+                         highlightbackground="blue",height=size[0],width=size[1],bg="deepskyblue")
 
 class BasicWin:
     def __init__(self, win: tk.Tk, geometry, app):
@@ -58,6 +63,7 @@ class ExploreWin(BasicWin):
 
     def __init__(self, win, geometry, app):
         super(ExploreWin, self).__init__(win, geometry, app)
+        self.second_frame = None
 
         self.load()
 
@@ -90,6 +96,7 @@ class ExploreWin(BasicWin):
                         command=lambda: self.onclick(my_canvas, second_frame, "my post",
                                                      "im love eat bananas in the sea"))
         btn.pack()
+        ComponentCreator.create_text_label(second_frame, "Your Feed").pack()
 
 
 
@@ -107,15 +114,19 @@ class ExploreWin(BasicWin):
 class LoginWin(BasicWin):
     def __init__(self, win, geometry, app):
         super(LoginWin, self).__init__(win, geometry, app)
-
-        self.login_btn = ComponentCreator.create_button(self.win, "Login", self.login_btn_onclick,"disabled")
+        img = load_assets()
+        self.win.resizable(False,False)
+        self.bg = tk.Label(self.win, image=img)
+        self.bg.image = img
+        self.login_btn = ComponentCreator.create_button(self.win, "Login",
+                        self.login_btn_onclick,"normal",(5,60))
         self.email_var = tk.StringVar()
         self.password_var = tk.StringVar()
         self.email_field = ComponentCreator.create_entry(self.win,self.email_var)
         self.password_field = ComponentCreator.create_entry(self.win,self.password_var)
         self.validate_job = None
-        self.email_text = ComponentCreator.create_text_label(self.win,"Your Email:")
-        self.pass_text = ComponentCreator.create_text_label(self.win,"Your Password:")
+        self.email_text = ComponentCreator.create_text_label(self.win,"Your Email:",color="light blue")
+        self.pass_text = ComponentCreator.create_text_label(self.win,"Your Password:",color="light blue")
 
     def login_btn_onclick(self):
 
@@ -147,12 +158,15 @@ class LoginWin(BasicWin):
         self.validate_job = self.win.after(1, self.validate_input)
 
     def load(self):
+        self.bg.place(y=0, x=0)
         pad_y = 10
-        self.email_text.pack(pady=pad_y)
-        self.email_field.pack(pady=pad_y)
-        self.pass_text.pack(pady=pad_y)
-        self.password_field.pack(pady=pad_y)
-        self.login_btn.pack(pady=pad_y)
+        self.email_text.place(y=480,x=330)
+        self.email_field.place(y=450,x=330)
+        self.pass_text.place(y=580,x=330)
+        self.password_field.place(y=545,x=330)
+        self.login_btn.place(y=680,x=290)
+
+
         self.validate_input()
 
 
@@ -161,7 +175,8 @@ class App:
     def __init__(self):
         self.state = AppStates.LOGIN
         self.win = tk.Tk()
-        self.root = LoginWin(self.win, "800x800", self)
+
+        self.root = LoginWin(self.win, "1000x1000", self)
         self.root.load()
         self.posts = []
 
@@ -184,6 +199,8 @@ class App:
 
 
 def run_app():
+
+
     app = App()
     app.root.mainloop()
 
