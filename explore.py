@@ -145,6 +145,7 @@ class LoginWin(BasicWin):
 
         else:
             # show error
+            print(response)
             self.password_field.delete(0, tk.END)
 
     def kill(self):
@@ -192,9 +193,12 @@ class App:
         # response bad return not ok
         with api_fecth.UsersAPI(requests.Session()) as session:
             res = session.login(email,password)
-        print(res)
-        self.user = email
-        return 1
+        if res[1] == 200:
+            print(res)
+            self.user = email
+            return 1
+        return res[0]
+
 
     def update_content(self):
         threading.Thread(target=self.state_gui, daemon=True).start()

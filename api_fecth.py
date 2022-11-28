@@ -30,7 +30,9 @@ class UsersAPI(API):
     def register(self,email,password):
         user = User(email,password)
         res = self._session.post(self.base_url + "/register",json=user.to_json())
-        return res.text, res.status_code
+        if res.ok:
+            return User(**res.json())
+        return None
 
     def login(self,email,password):
         user = User(email, password)
@@ -39,4 +41,6 @@ class UsersAPI(API):
 
 if __name__ == '__main__':
     with UsersAPI(requests.Session()) as s:
-        s.register("adim333","12345")
+        code =  s.register("adim333","12345")
+
+        print(code)

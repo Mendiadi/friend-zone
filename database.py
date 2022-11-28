@@ -20,7 +20,7 @@ class DataBase:
             user_table = user(db.types.column(db.types.varchar(50),nullable=False),
                               db.types.column(db.types.varchar(100),nullable=False))
             db.create_table(user,user_table,primary_key="email")
-
+            db.commit()
 
     def add_user(self,user_obj:user):
         with simpleSQL.connect(host="localhost", user="root",
@@ -31,6 +31,7 @@ class DataBase:
                 code = 1
             else:
                  code = 0
+            db.commit()
         return code
 
     def remove_user(self,email):
@@ -42,6 +43,7 @@ class DataBase:
                 code = 1
             else:
                 code = 0
+            db.commit()
         return code
 
     def get_user(self,email):
@@ -49,5 +51,5 @@ class DataBase:
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
             user_ = db.query_filter_by(user,"email",email,first=True)
-
+        print(user_)
         return user_
