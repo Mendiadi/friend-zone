@@ -10,6 +10,13 @@ class Model:
 
 
 @dataclasses.dataclass
+class Post(Model):
+    post_id: int
+    text: str
+    user_email: str
+
+
+@dataclasses.dataclass
 class User(Model):
     email: str
     password: str
@@ -43,9 +50,17 @@ class UsersAPI(API):
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
 
+    def create_post(self, post_data: Post, user):
+        res = self._session.post(self.base_url + f"/{user}/post", json=post_data.to_json())
+        print(res.text)
+
+    def get_posts_by_user(self, user):
+        res = self._session.get(self.base_url + f"/{user}/post")
+        print(res.text)
+
 
 if __name__ == '__main__':
     with UsersAPI(requests.Session()) as s:
-        code = s.register("adim333", "12345")
+        code = s.get_posts_by_user("adim333")
 
         print(code)
