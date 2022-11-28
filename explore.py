@@ -6,20 +6,22 @@ import requests
 
 import api_fecth
 
-def load_assets():
 
-    img = tk.PhotoImage (file="assets/bg_login.png")
+def load_assets():
+    img = tk.PhotoImage(file="assets/bg_login.png")
     return img
 
+
 class AppStates(enum.Enum):
-    LOGIN = "login"
-    EXPLORE = "explore"
+    LOGIN = 1
+    EXPLORE = 2
+    REGISTER = 3
 
 
 class ComponentCreator:
     @staticmethod
-    def create_text_label(root,text,color="white",fg_color="black"):
-        label = tk.Label(root,text=text,
+    def create_text_label(root, text, color="white", fg_color="black"):
+        label = tk.Label(root, text=text,
                          font="none 10 bold",
                          bg=color,
                          fg=fg_color,
@@ -39,13 +41,14 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_entry(root,text_var):
-        return tk.Entry(root,textvariable=text_var,font="none 20",bg="light blue",border=1)
+    def create_entry(root, text_var):
+        return tk.Entry(root, textvariable=text_var, font="none 20", bg="light blue", border=1)
 
     @staticmethod
-    def create_button(root,text,func,state,size):
+    def create_button(root, text, func, state, size):
         return tk.Button(root, text=text, command=func, state=state,
-                         highlightbackground="blue",height=size[0],width=size[1],bg="deepskyblue")
+                         highlightbackground="blue", height=size[0], width=size[1], bg="deepskyblue")
+
 
 class BasicWin:
     def __init__(self, win: tk.Tk, geometry, app):
@@ -69,7 +72,6 @@ class ExploreWin(BasicWin):
         self.second_frame = None
         self.post_data = tk.StringVar()
         self.add_post_entry = None
-        self.load()
 
     def update_win(self, my_canvas):
         self.win.update()
@@ -100,10 +102,8 @@ class ExploreWin(BasicWin):
                         command=lambda: self.onclick(my_canvas, second_frame))
         btn.pack()
         ComponentCreator.create_text_label(second_frame, "Your Feed").pack()
-        self.add_post_entry = ComponentCreator.create_entry(second_frame,self.post_data)
+        self.add_post_entry = ComponentCreator.create_entry(second_frame, self.post_data)
         self.add_post_entry.pack()
-
-
 
     def reload(self, ):
         for post in self.app.posts:
@@ -116,30 +116,94 @@ class ExploreWin(BasicWin):
         self.reload()
 
 
+class RegisterWin(BasicWin):
+    def __init__(self, win, geometry, app):
+        super(RegisterWin, self).__init__(win, geometry, app)
+        self.register_btn = ComponentCreator.create_button(self.win, "Register",
+                                                           self.register_btn_onclick, "normal", (5, 60))
+        self.email_var = tk.StringVar()
+        self.password_var = tk.StringVar()
+        self.re_password_var = tk.StringVar()
+        self.email_field = ComponentCreator.create_entry(self.win, self.email_var)
+        self.password_field = ComponentCreator.create_entry(self.win, self.password_var)
+        self.re_password_field = ComponentCreator.create_entry(self.win, self.re_password_var)
+        self.validate_job = None
+        self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
+        self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
+        self.re_pass_text = ComponentCreator.create_text_label(self.win, "Your Password Again:", color="light blue")
+
+    def register_btn_onclick(self):
+
+        response = self.app.register(self.email_var.get(),
+                                     self.password_var.get(), self.re_password_var.get())
+        if response == 1:
+            self.kill()
+            self.app.state = AppStates.LOGIN
+            self.app.update_content()
+
+        else:
+            # show error
+            print(response)
+            self.password_field.delete(0, tk.END)
+            self.re_password_field.delete(0, tk.END)
+
+    def kill(self):
+        self.email_text.destroy()
+        self.pass_text.destroy()
+        self.re_password_field.destroy()
+        self.register_btn.destroy()
+        self.email_field.destroy()
+        self.password_field.destroy()
+        self.re_pass_text.destroy()
+        self.win.clipboard_clear()
+
+    def validate_input(self):
+        if len(self.email_var.get()) < 3:
+            self.register_btn.config(state="disabled")
+        else:
+            self.register_btn.config(state="active")
+        self.validate_job = self.win.after(1, self.validate_input)
+
+    def load(self):
+        pad = 10
+
+        self.email_text.pack(pady=pad)
+        self.email_field.pack(pady=pad)
+        self.pass_text.pack(pady=pad)
+        self.password_field.pack(pady=pad)
+        self.re_pass_text.pack(pady=pad)
+        self.re_password_field.pack(pady=pad)
+
+        self.register_btn.pack(pady=pad)
+
+
 class LoginWin(BasicWin):
     def __init__(self, win, geometry, app):
         super(LoginWin, self).__init__(win, geometry, app)
         img = load_assets()
-        self.win.resizable(False,False)
+        self.win.resizable(False, False)
         self.bg = tk.Label(self.win, image=img)
         self.bg.image = img
         self.login_btn = ComponentCreator.create_button(self.win, "Login",
-                        self.login_btn_onclick,"normal",(5,60))
+                                                        self.login_btn_onclick, "normal", (5, 60))
         self.email_var = tk.StringVar()
         self.password_var = tk.StringVar()
-        self.email_field = ComponentCreator.create_entry(self.win,self.email_var)
-        self.password_field = ComponentCreator.create_entry(self.win,self.password_var)
+        self.email_field = ComponentCreator.create_entry(self.win, self.email_var)
+        self.password_field = ComponentCreator.create_entry(self.win, self.password_var)
         self.validate_job = None
-        self.email_text = ComponentCreator.create_text_label(self.win,"Your Email:",color="light blue")
-        self.pass_text = ComponentCreator.create_text_label(self.win,"Your Password:",color="light blue")
+        self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
+        self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
+        self.register_btn = ComponentCreator.create_button(self.win, "sign up", self.sign_up_page, "normal", (5, 60))
+
+    def sign_up_page(self):
+        self.app.state = AppStates.REGISTER
+        self.app.update_content()
 
     def login_btn_onclick(self):
-
 
         response = self.app.login(self.email_var.get(), self.password_var.get())
         if response == 1:
             self.win.after_cancel(self.validate_job)
-            self.kill()
             self.app.state = AppStates.EXPLORE
             self.app.update_content()
 
@@ -149,32 +213,33 @@ class LoginWin(BasicWin):
             self.password_field.delete(0, tk.END)
 
     def kill(self):
+        self.bg.destroy()
         self.email_text.destroy()
         self.pass_text.destroy()
         self.login_btn.destroy()
         self.email_field.destroy()
         self.password_field.destroy()
+        self.register_btn.destroy()
         self.win.clipboard_clear()
 
     def validate_input(self):
-        if len(self.email_var.get()) < 3:
-            self.login_btn.config(state="disabled")
-        else:
-            self.login_btn.config(state="active")
-        self.validate_job = self.win.after(1, self.validate_input)
+        if self.app.state == AppStates.LOGIN:
+            if len(self.email_var.get()) < 3:
+                self.login_btn.config(state="disabled")
+            else:
+                self.login_btn.config(state="active")
+            self.validate_job = self.win.after(1, self.validate_input)
 
     def load(self):
         self.bg.place(y=0, x=0)
-        pad_y = 10
-        self.email_text.place(y=480,x=330)
-        self.email_field.place(y=450,x=330)
-        self.pass_text.place(y=580,x=330)
-        self.password_field.place(y=545,x=330)
-        self.login_btn.place(y=680,x=290)
-
+        self.register_btn.place(x=290, y=800)
+        self.email_text.place(y=480, x=330)
+        self.email_field.place(y=450, x=330)
+        self.pass_text.place(y=580, x=330)
+        self.password_field.place(y=545, x=330)
+        self.login_btn.place(y=680, x=290)
 
         self.validate_input()
-
 
 
 class App:
@@ -182,23 +247,34 @@ class App:
         self.state = AppStates.LOGIN
         self.win = tk.Tk()
         self.user = None
-        self.root = LoginWin(self.win, "1000x1000", self)
+        self.MAXSIZE = "1000x1000"
+        self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.posts = []
+
+    def register(self, email, password, re_password):
+        if password != re_password:
+            return 0
+        with api_fecth.UsersAPI(requests.session()) as session:
+
+            res = session.register(email, password)
+            print(res)
+        if type(res) == str:
+            return 0
+        return 1
 
     def login(self, email, password):
 
         # requests login
         # response 200 -> return ok
         # response bad return not ok
-        with api_fecth.UsersAPI(requests.Session()) as session:
-            res = session.login(email,password)
+        with api_fecth.UsersAPI(requests.session()) as session:
+            res = session.login(email, password)
         if res[1] == 200:
             print(res)
             self.user = email
             return 1
         return res[0]
-
 
     def update_content(self):
         threading.Thread(target=self.state_gui, daemon=True).start()
@@ -207,12 +283,19 @@ class App:
         print(self.state)
         if self.state == AppStates.EXPLORE and type(self.root) != ExploreWin:
             self.root.kill()
-            self.root = ExploreWin(self.win, "1000x1000", self)
+            self.root = ExploreWin(self.win, self.MAXSIZE, self)
+            self.root.load()
+        elif self.state == AppStates.REGISTER and type(self.root) != RegisterWin:
+            self.root.kill()
+            self.root = RegisterWin(self.win, self.MAXSIZE, self)
+            self.root.load()
+        elif self.state == AppStates.LOGIN and type(self.root) != LoginWin:
+            self.root.kill()
+            self.root = LoginWin(self.win, self.MAXSIZE, self)
+            self.root.load()
 
 
 def run_app():
-
-
     app = App()
     app.root.mainloop()
 
