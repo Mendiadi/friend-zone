@@ -1,7 +1,6 @@
 import hashlib
-import json
-
 import flask
+# my imports
 import database
 
 app = flask.Flask("fb_clone")

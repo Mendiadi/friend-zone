@@ -36,10 +36,10 @@ class ComponentCreator:
         label = tk.Label(can, text=h1, font="none 20 bold", height=0, width=len(h1) + 1)
         txt = tk.Label(can, text=text, font="none 12", height=0, width=len(text) + 1, bg="red")
         txt.place_configure(x=100, y=100)
-        print(func.__name__)
+
 
         def wrap():
-            print(func.__name__)
+
             func(post_id)
 
         btn = tk.Button(can, text="del", command=wrap)
@@ -120,35 +120,30 @@ class ExploreWin(BasicWin):
         self.fetch_all_posts()
 
     def fetch_all_posts(self, ):
-        for i, post in enumerate(self.app.posts):
+        for post in self.posts:
+            post.destroy()
+        self.posts.clear()
+        for i, post in enumerate(self.app.get_posts(self.app.user)):
             if i > 25:
                 break
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
                                                    self.delete_post_onclick, post.post_id)
             self.posts.append(p)
             p.pack()
+        print(self.posts)
         self.update_win(self.my_canvas)
 
-    def refresh_posts(self):
-        for post in self.posts:
-            post.destroy()
-        self.fetch_all_posts()
 
     def delete_post_onclick(self, post_id):
         print(post_id)
         if self.app.delete_post(post_id):
-            self.app.posts = self.app.get_posts(self.app.user)
-            self.refresh_posts()
+            self.fetch_all_posts()
 
     def onclick(self, c, root):
         # c means canvas to update scrollbar
         code, post = self.app.create_post(self.post_data.get())
         if not code:
             return
-        label = ComponentCreator.create_post_label(root, post.user_email, post.text,
-                                                   self.delete_post_onclick, post.post_id)
-        self.posts.append(label)
-        self.app.posts = self.app.get_posts(self.app.user)
         self.fetch_all_posts()
         self.update_win(c)
 
@@ -287,7 +282,7 @@ class App:
         self.MAXSIZE = "1000x1000"
         self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
-        self.posts = []
+
 
     def delete_post(self, post):
         with api_fecth.UsersAPI(requests.session()) as session:
@@ -345,7 +340,7 @@ class App:
         threading.Thread(target=self.state_gui, daemon=True).start()
 
     def state_gui(self):
-        print(self.state)
+
         if self.state == AppStates.EXPLORE and type(self.root) != ExploreWin:
             self.root.kill()
             self.root = ExploreWin(self.win, self.MAXSIZE, self)
