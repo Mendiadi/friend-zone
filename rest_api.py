@@ -68,6 +68,15 @@ def delete_post(post_id):
         return flask.make_response(flask.jsonify({"deleted": "ok"}), 200)
     return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
 
+@app.route("/search/<query>")
+def search(query):
+    users = db.get_users()
+    res = []
+    for user in users:
+        if query in user.email:
+           res.append(user.__dict__)
+
+    return flask.make_response(flask.jsonify({"users":res}),200)
 
 if __name__ == '__main__':
     app.run(debug=True)

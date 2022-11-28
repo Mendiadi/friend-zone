@@ -92,6 +92,15 @@ class DataBase:
 
         return users
 
+    def get_users(self):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+
+            users = db.query_all(user)
+
+        return users
+
     def delete_post(self, post_id):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",

@@ -1,5 +1,6 @@
 import enum
 import threading
+import time
 import tkinter as tk
 
 import requests
@@ -13,6 +14,7 @@ def load_assets():
 
 
 class AppStates(enum.Enum):
+    HOME = 0
     LOGIN = 1
     EXPLORE = 2
     REGISTER = 3
@@ -28,6 +30,14 @@ class ComponentCreator:
 
                          )
         return label
+
+    @staticmethod
+    def create_user_label(root,email):
+        can = tk.Canvas(root,bg="red")
+        label = tk.Label(can, text=email, font="none 20 bold", height=0, width=len(email) + 1)
+        label.place_configure(x=100, y=100)
+        return can
+
 
     @staticmethod
     def create_post_label(root, h1, text, func=None, post_id=None):
@@ -53,7 +63,10 @@ class ComponentCreator:
         return tk.Entry(root, textvariable=text_var, font="none 20", bg="light blue", border=1)
 
     @staticmethod
-    def create_button(root, text, func, state, size):
+    def create_button(root, text, func, state, size=None):
+        if not size:
+            return tk.Button(root, text=text, command=func, state=state,
+                             highlightbackground="blue", bg="deepskyblue")
         return tk.Button(root, text=text, command=func, state=state,
                          highlightbackground="blue", height=size[0], width=size[1], bg="deepskyblue")
 
@@ -146,6 +159,59 @@ class ExploreWin(BasicWin):
             return
         self.fetch_all_posts()
         self.update_win(c)
+
+
+
+class HomeWin(BasicWin):
+    def __init__(self, win, geometry, app):
+        super(HomeWin, self).__init__(win, geometry, app)
+        self.search_query = tk.StringVar()
+        self.search_bar = ComponentCreator.create_entry(self.win,self.search_query)
+        self.search_btn = ComponentCreator.create_button(self.win,
+                                                         "Search",self.search_onclick,"normal")
+        self.results = []
+        self.result_labels = []
+        self.run = True
+        threading.Thread(target=self.search_thread,daemon=True).start()
+
+
+    def kill(self):
+        self.search_bar.destroy()
+        self.search_btn.destroy()
+        self.run = False
+
+    def search_onclick(self):
+        if self.search_query.get():
+            self.fetch_results(self.app.search(self.search_query.get()))
+
+    def search_thread(self):
+        temp = None
+        while self.run:
+            time.sleep(0.1)
+
+            if self.search_query.get() != temp:
+                temp = self.search_query.get()
+                self.search_onclick()
+
+
+
+
+    def fetch_results(self,res):
+        print(res)
+        for l in self.result_labels:
+            l.destroy()
+        self.result_labels.clear()
+        for u in res:
+            a = ComponentCreator.create_user_label(self.win,u.email)
+            a.pack()
+            self.result_labels.append(a)
+
+
+    def load(self):
+        pad = 10
+        self.search_bar.pack(pady=pad)
+        self.search_btn.pack(padx=10,pady=0)
+
 
 
 class RegisterWin(BasicWin):
@@ -280,9 +346,13 @@ class App:
         self.win = tk.Tk()
         self.user = None
         self.MAXSIZE = "1000x1000"
-        self.root = LoginWin(self.win, self.MAXSIZE, self)
+        self.root = HomeWin(self.win, self.MAXSIZE, self)
         self.root.load()
 
+    def search(self,query):
+        with api_fecth.UsersAPI(requests.session()) as session:
+            res = session.search(query)
+        return res
 
     def delete_post(self, post):
         with api_fecth.UsersAPI(requests.session()) as session:
@@ -356,7 +426,10 @@ class App:
             self.root.kill()
             self.root = LoginWin(self.win, self.MAXSIZE, self)
             self.root.load()
-
+        elif self.state == AppStates.HOME and type(self.root) != HomeWin:
+            self.root.kill()
+            self.root = HomeWin(self.win,self.MAXSIZE,self)
+            self.root.load()
 
 def run_app():
     app = App()

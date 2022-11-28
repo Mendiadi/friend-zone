@@ -1,0 +1,13 @@
+{
+  "db":
+  {
+    "host": null,
+    "user": null,
+    "password": null,
+    "database": null
+  },
+  "net": {
+    "port": null,
+    "host": null
+  }
+}
