@@ -68,11 +68,12 @@ def delete_post(post_id):
         return flask.make_response(flask.jsonify({"deleted": "ok"}), 200)
     return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
 
+
 @app.route("/posts")
 def get_all_posts():
     posts = db.get_all_posts()
     posts = [post.__dict__ for post in posts]
-    return flask.make_response(flask.jsonify({"posts":posts}),200)
+    return flask.make_response(flask.jsonify({"posts": posts}), 200)
 
 
 @app.route("/search/<query>")
@@ -81,9 +82,21 @@ def search(query):
     res = []
     for user in users:
         if query in user.email:
-           res.append(user.__dict__)
+            res.append(user.__dict__)
 
-    return flask.make_response(flask.jsonify({"users":res}),200)
+    return flask.make_response(flask.jsonify({"users": res}), 200)
+
+
+@app.route("/post/edit/<post_id>", methods=["PUT"])
+def update_post(post_id):
+    data = database.post(**flask.request.json)
+    if int(post_id) != int(data.post_id):
+        print(post_id,data.__dict__)
+        return flask.make_response(flask.jsonify({"error": "post id modified"}), 400)
+    if not db.update_post(data, data.post_id):
+        return flask.make_response(flask.jsonify({"error": "something went wrong"}), 400)
+    return flask.make_response(flask.jsonify({"post": data.__dict__}), 201)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -4,6 +4,7 @@ import threading
 import time
 import tkinter as tk
 
+import keyboard.mouse
 import requests
 
 import api_fecth
@@ -46,8 +47,8 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, h1, text, func=None, post_id=None):
-        color_bg = "light grey"
+    def create_post_label(root, h1, text, func_del=None,func_edit=None, post=None):
+        color_bg = "grey"
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
         can2 = tk.Canvas(can, height=175, width=450, bg=color_bg)
@@ -55,24 +56,31 @@ class ComponentCreator:
         txt = tk.Label(can2, text=text, font="none 12", height=0, width=len(text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
 
-        def wrap():
-            func(post_id)
+        def wrap(key):
+            if key == 1:
+                func_del(post.post_id)
+            else:
+                func_edit(post)
 
-        if func:
-            btn = tk.Button(can, text="X", command=wrap, font="none 12 bold", bg="red", border=0
+        if func_del:
+            btn = tk.Button(can, text="X", command=lambda:wrap(1), font="none 12 bold", bg="red", border=0
                             , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
             btn.place_configure(x=480, y=5)
+        if func_edit:
+            btn = tk.Button(can, text="E", command=lambda: wrap(2), font="none 12 bold", bg="red", border=0
+                            , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
+            btn.place_configure(x=480, y=40)
         label.place_configure(x=0, y=0)
         can2.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
         return can
 
     @staticmethod
-    def create_entry(root, text_var,hide=False):
+    def create_entry(root, text_var, hide=False):
 
         hide = None if not hide else "*"
 
-        return tk.Entry(root, textvariable=text_var, font="none 20", bg="light blue", border=1,show=hide)
+        return tk.Entry(root, textvariable=text_var, font="none 20", bg="light blue", border=1, show=hide)
 
     @staticmethod
     def create_button(root, text, func, state, size=None):
@@ -135,6 +143,26 @@ class PostViewWin(ScrolledWin):
         super(PostViewWin, self).__init__(win, geometry, app)
         self.posts = []
 
+
+
+    def edit_post_onclick(self, post):
+        pop_win = tk.Tk("edit")
+        pop_win.geometry("300x300")
+        post_edit_var = tk.StringVar()
+        e_entry = ComponentCreator.create_entry(pop_win, post_edit_var)
+        def edit_click(post_):
+
+            post_.text = e_entry.get()
+
+            self.app.edit_post(post_)
+            from_all = True if self.app.state == AppStates.EXPLORE else False
+            self.fetch_all_posts(from_all)
+            pop_win.destroy()
+        e_entry.pack(pady=10)
+        ComponentCreator.create_button(pop_win, "edit", lambda: edit_click(post), "normal").pack(pady=10)
+
+
+
     def delete_post_onclick(self, post_id):
         print(post_id)
         if self.app.delete_post(post_id):
@@ -151,7 +179,7 @@ class PostViewWin(ScrolledWin):
             if i > 25:
                 break
             if post.user_email == self.app.user:
-                conf_label = self.delete_post_onclick, post.post_id
+                conf_label = self.delete_post_onclick,self.edit_post_onclick, post
             else:
                 conf_label = (None,)
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text, *conf_label)
@@ -284,8 +312,8 @@ class RegisterWin(BasicWin):
         self.password_var = tk.StringVar()
         self.re_password_var = tk.StringVar()
         self.email_field = ComponentCreator.create_entry(self.win, self.email_var)
-        self.password_field = ComponentCreator.create_entry(self.win, self.password_var,hide=True)
-        self.re_password_field = ComponentCreator.create_entry(self.win, self.re_password_var,hide=True)
+        self.password_field = ComponentCreator.create_entry(self.win, self.password_var, hide=True)
+        self.re_password_field = ComponentCreator.create_entry(self.win, self.re_password_var, hide=True)
         self.validate_job = None
         self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
         self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
@@ -307,15 +335,14 @@ class RegisterWin(BasicWin):
             self.re_password_field.delete(0, tk.END)
 
     def validate_input(self):
-        if len(self.email_var.get()) < 3 or len(self.re_password_var.get()) < 3\
-                or len(self.password_var.get()) < 3:
-            self.register_btn.config(state="disabled")
-        else:
-            self.register_btn.config(state="normal")
+        if self.app.state == AppStates.REGISTER:
+            if len(self.email_var.get()) < 3 or len(self.re_password_var.get()) < 3 \
+                    or len(self.password_var.get()) < 3:
+                self.register_btn.config(state="disabled")
+            else:
+                self.register_btn.config(state="normal")
 
-        self.validate_job = self.win.after(1, self.validate_input)
-
-
+            self.validate_job = self.win.after(1, self.validate_input)
 
     def load(self):
         pad = 10
@@ -330,10 +357,10 @@ class RegisterWin(BasicWin):
         self.register_btn.pack(pady=pad)
         self.validate_input()
 
-
     def kill(self):
         super().kill()
         self.win.after(self.validate_job)
+
 
 class LoginWin(BasicWin):
     def __init__(self, win, geometry, app):
@@ -347,7 +374,7 @@ class LoginWin(BasicWin):
         self.email_var = tk.StringVar()
         self.password_var = tk.StringVar()
         self.email_field = ComponentCreator.create_entry(self.win, self.email_var)
-        self.password_field = ComponentCreator.create_entry(self.win, self.password_var,hide=True)
+        self.password_field = ComponentCreator.create_entry(self.win, self.password_var, hide=True)
         self.validate_job = None
         self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
         self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
@@ -414,6 +441,11 @@ class App:
         with api_fecth.UsersAPI(requests.session()) as session:
             res = session.search(query)
         return res
+
+    def edit_post(self, post):
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.edit_post(post)
+            print(res)
 
     def delete_post(self, post):
         with api_fecth.PostsAPI(requests.session()) as session:

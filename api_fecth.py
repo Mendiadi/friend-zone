@@ -19,12 +19,14 @@ class Post(Model):
     post_id: int
     text: str
     user_email: str
+    # likes:int
 
 
 @dataclasses.dataclass
 class User(Model):
     email: str
     password: str
+    # like:list[post_id]
 
 
 class API:
@@ -93,6 +95,13 @@ class PostsAPI(API):
         res = self._session.get(self.base_url + f"/posts")
         if res.ok:
             return [Post(**p) for p in res.json()['posts']]
+        return res.text
+
+    def edit_post(self,post:Post):
+        print(post)
+        res = self._session.put(self.base_url + f"/post/edit/{post.post_id}",json=post.to_json())
+        if res.ok:
+            return Post(**res.json()['post'])
         return res.text
 
 if __name__ == '__main__':
