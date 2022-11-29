@@ -5,7 +5,7 @@ import threading
 import time
 import tkinter as tk
 from collections import OrderedDict
-
+from tkinter import messagebox
 import requests
 
 import api_fecth
@@ -65,8 +65,8 @@ class ComponentCreator:
                 self.txt.config(text=self.post.text)
                 self.like_label.config(text="likes: " + str(likes_count), width=len(text) + 1)
                 self.like_count = likes_count
-                if self.post.post_id not in [p.post_id for p in app.get_post_by_email(app.user)]:
-                    self.like_btn.config(text="like")
+                if self.post.post_id not in [p.post_id for p in app.get_likes_by_email(app.user)]:
+                    self.like_btn.config(text="like", )
                     self.like_btn.place_configure(x=468)
                 else:
                     self.like_btn.config(text="dislike")
@@ -79,11 +79,11 @@ class ComponentCreator:
         label = tk.Label(can2, text=h1, font="none 20 bold", height=0, width=len(h1) + 1, bg="red")
         txt = tk.Label(can2, text=text, font="none 12", height=0, width=len(text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
-        like_btn = tk.Button(can, text="Like", bg="grey", command=lambda: wrap(0))
+        like_btn = tk.Button(can, text="like", bg="red", command=lambda: wrap(0), border=0, font="none 10 bold")
         like_btn.place_configure(x=468, y=178)
         print(post)
         like_count = tk.Label(can, text=f"likes: {like_count}",
-                              font="none 8", bg=color_bg)
+                              font="none 8", bg=color_bg, width=len(text) + 1)
         like_count.place_configure(x=1, y=1)
 
         def wrap(key):
@@ -107,7 +107,9 @@ class ComponentCreator:
         label.place_configure(x=0, y=0)
         can2.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
-        return PostComponent(can, can2, label, txt, like_count, like_btn, post)
+        label_post_created = PostComponent(can, can2, label, txt, like_count, like_btn, post)
+
+        return label_post_created
 
     @staticmethod
     def create_entry(root, text_var, hide=False):
@@ -224,10 +226,12 @@ class PostViewWin(ScrolledWin):
             if p.user_email == self.app.user:
                 conf_label = self.delete_post_onclick, self.edit_post_onclick, p, likes_count
             else:
-                conf_label = (None, None, post, likes_count)
-            self.posts[post] = ComponentCreator.create_post_label(self.second_frame,p.user_email,
-                                                                  p.text,*conf_label,func_like=self.like_post_onclick)
+                conf_label = (None, None, p, likes_count)
+            self.posts[post] = ComponentCreator.create_post_label(self.second_frame, p.user_email,
+                                                                  p.text, *conf_label, func_like=self.like_post_onclick)
+            self.posts[post].refresh(likes_count, self.app)
             self.posts[post].can.pack()
+
         self.update_win()
 
     def fetch_all_posts(self, from_all=False):
@@ -248,6 +252,7 @@ class PostViewWin(ScrolledWin):
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
                                                    *conf_label, func_like=self.like_post_onclick)
             self.posts[post.post_id] = p
+            self.posts[post.post_id].refresh(likes_count, self.app)
             p.can.pack()
 
         self.update_win()
@@ -260,6 +265,9 @@ class ExploreWin(PostViewWin):
         self.post_data = tk.StringVar()
         self.add_post_entry = None
 
+    def refresh_feed(self):
+        self.fetch_all_posts(from_all=True)
+
     def move_to_home_page(self):
         self.app.state = AppStates.HOME
         self.app.update_content()
@@ -271,6 +279,7 @@ class ExploreWin(PostViewWin):
 
         ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
         ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page, "normal").pack(pady=5)
+        ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed, "normal").pack(pady=5)
         self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
         self.add_post_entry.pack(pady=5)
         btn.pack(pady=10)
@@ -297,8 +306,9 @@ class LikesViewWin(PostViewWin):
 
     def load(self):
         super(LikesViewWin, self).load()
-        ComponentCreator.create_button(self.second_frame,"back",self.on_back_click,"normal").pack()
+        ComponentCreator.create_button(self.second_frame, "back", self.on_back_click, "normal").pack()
         self.fetch_liked_posts()
+
 
 class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
@@ -331,8 +341,13 @@ class HomeWin(BasicWin):
         super(HomeWin, self).__init__(win, geometry, app)
         self.search_query = tk.StringVar()
         self.win.config(bg="grey")
+        img = tk.PhotoImage(file="assets/bg_cool.png")
+        self.bg = tk.Label(self.win, image=img)
+        self.bg.image = img
+
         self.search_bar = ComponentCreator.create_entry(self.win, self.search_query)
-        self.explore_btn = ComponentCreator.create_button(self.win, "EXPLORE", self.explore_page_onclick, "normal")
+        self.explore_btn = ComponentCreator.create_button(self.win, "EXPLORE", self.explore_page_onclick,
+                                                          "normal", size=(2, 10))
         self.results = []
         self.result_labels = []
         self.run = True
@@ -373,20 +388,28 @@ class HomeWin(BasicWin):
         print(res)
         self.clear_results()
         self.result_labels.clear()
-        for u in res:
+        for i, u in enumerate(res):
             a = ComponentCreator.create_user_label(self.win, u.email, self.move_to_user_page)
-            a.pack(pady=10)
+            if i == 0:
+                y = 200
+            else:
+                y = 200 + (50 * i)
+
+            a.place(x=450, y=y)
             self.result_labels.append(a)
 
     def my_profile(self):
         self.move_to_user_page(self.app.user)
 
     def load(self):
-        ComponentCreator.create_button(self.win, "My Profile", self.my_profile, "normal").pack(pady=5)
-        self.explore_btn.pack(pady=10)
 
-        ComponentCreator.create_text_label(self.win, "Search for Users", "cyan").pack(pady=5)
-        self.search_bar.pack(pady=10)
+        self.bg.place(x=0, y=0)
+        ComponentCreator.create_button(self.win, "My Profile", self.my_profile, "normal", size=(2, 10)).place(x=670,
+                                                                                                              y=70)
+        self.explore_btn.place(x=300, y=70)
+
+        ComponentCreator.create_text_label(self.win, "Search for Users", "cyan").place(x=460, y=110)
+        self.search_bar.place(x=370, y=150)
 
 
 class RegisterWin(BasicWin):
@@ -446,7 +469,6 @@ class RegisterWin(BasicWin):
 
     def kill(self):
         super().kill()
-
 
 
 class LoginWin(BasicWin):
@@ -520,9 +542,17 @@ class App:
         self.win = tk.Tk()
         self.user = None
         self.MAXSIZE = "1000x1000"
-        self.root = LoginWin(self.win, self.MAXSIZE, self)
+        self.root = HomeWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
+
+
+    def test_connection(self):
+        with api_fecth.UsersAPI(requests.session()) as session:
+            res = session.test_connection()
+        if res == 0:
+            messagebox.showerror("no connection","your connection is disabled")
+
 
     def search(self, query):
         with api_fecth.UsersAPI(requests.session()) as session:
@@ -599,12 +629,6 @@ class App:
             print(res)
         return res
 
-    def get_post_by_email(self, email):
-        with api_fecth.PostsAPI(requests.session()) as session:
-            res = session.get_likes_by_email(email)
-            print(res)
-        return res
-
     def login(self, email, password):
 
         # requests login
@@ -653,11 +677,12 @@ class App:
             raise Exception("we run for some errors right now...")
         self.switch_page(page)
 
-    def get_likes_by_email(self,email):
+    def get_likes_by_email(self, email):
 
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_likes_by_email(email)
         return res
+
 
 def run_app():
     app = App()

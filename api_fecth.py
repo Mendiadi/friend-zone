@@ -47,7 +47,12 @@ class API:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._session.close()
 
-
+    def test_connection(self):
+        try:
+            self._session.get(self.base_url)
+            return 1
+        except ConnectionError:
+            return 0
 class UsersAPI(API):
     def __init__(self, session):
         super().__init__(session)
