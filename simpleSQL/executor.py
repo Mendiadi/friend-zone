@@ -461,9 +461,16 @@ class SimpleSQL:
     def query_update_table(self, table, data,foreign_key = False):
         self._executor.execute_update_table(table.__name__, data,foreign_key)
 
-    def query_alter_table_forgkey(self,table,foreign_key,reference:tuple):
+    def query_alter_table_forgkey(self,table,foreign_key,reference:tuple,ondelete="",onupdate=""):
+        if ondelete:
+            ondelete = " ON DELETE CASCADE"
+        if onupdate:
+            onupdate =  " ON UPDATE CASCADE"
+        print(f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES "
+             f"{reference[0]}({reference[1]}{ondelete}{onupdate});")
         self._executor.execute\
-            (f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES {reference[0]}({reference[1]});")
+            (f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES "
+             f"{reference[0]}({reference[1]}){ondelete}{onupdate};")
 
 
     def backup(self, filepath: str, diff: bool = False):

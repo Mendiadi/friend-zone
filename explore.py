@@ -4,7 +4,7 @@ import threading
 import time
 import tkinter as tk
 
-import keyboard.mouse
+
 import requests
 
 import api_fecth
@@ -47,7 +47,7 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, h1, text, func_del=None,func_edit=None, post=None):
+    def create_post_label(root, h1, text, func_del=None,func_edit=None, post=None,func_like=None):
         color_bg = "grey"
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
@@ -55,13 +55,18 @@ class ComponentCreator:
         label = tk.Label(can2, text=h1, font="none 20 bold", height=0, width=len(h1) + 1, bg="red")
         txt = tk.Label(can2, text=text, font="none 12", height=0, width=len(text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
-
+        like_btn = tk.Button(can,text="Like",bg="grey",command=lambda:wrap(0))
+        like_btn.place_configure(x=468,y=178)
+        print(post)
         def wrap(key):
+            print(key)
             if key == 1:
                 func_del(post.post_id)
-            else:
+            elif key == 2:
                 func_edit(post)
+            else:
 
+                func_like(post.post_id)
         if func_del:
             btn = tk.Button(can, text="X", command=lambda:wrap(1), font="none 12 bold", bg="red", border=0
                             , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
@@ -143,6 +148,13 @@ class PostViewWin(ScrolledWin):
         super(PostViewWin, self).__init__(win, geometry, app)
         self.posts = []
 
+    def like_post_onclick(self,post_id):
+        try:
+            print(post_id,"*****************************")
+            like = api_fecth.Like(self.app.user,post_id)
+            self.app.post_like(like)
+        except:
+            print(post_id)
 
 
     def edit_post_onclick(self, post):
@@ -181,8 +193,10 @@ class PostViewWin(ScrolledWin):
             if post.user_email == self.app.user:
                 conf_label = self.delete_post_onclick,self.edit_post_onclick, post
             else:
-                conf_label = (None,)
-            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text, *conf_label)
+                conf_label = (None,None,post)
+            print(conf_label)
+            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
+                                                   *conf_label,func_like=self.like_post_onclick)
             self.posts.append(p)
             p.pack()
 
@@ -452,6 +466,15 @@ class App:
             res = session.delete_post(post)
             print(res[0])
             if res[1] == 200:
+                return 1
+            return 0
+
+    def post_like(self,like):
+        with api_fecth.PostsAPI(requests.session()) as session:
+
+            res = session.like_post(like)
+            print(res[0])
+            if res[1] == 201:
                 return 1
             return 0
 

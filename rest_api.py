@@ -99,15 +99,18 @@ def update_post(post_id):
 
 @app.route("/post/like/<post_id>", methods=["POST"])
 def like_post(post_id):
-    data = database.likes(**flask.request.json)
-    if int(post_id) != int(data.post_id):
-        return flask.make_response(flask.jsonify({"error": "post id modified"}), 400)
-    for like in db.get_user_likes(user_email=data.user_email):
-        if int(like.post_id) == int(post_id):
-            return flask.make_response(flask.jsonify({"error": "cant like twice"}), 400)
-    db.add_like(data)
-    return flask.make_response(flask.jsonify({"like": data.__dict__}), 201)
-
+    if db.get_post_by_id(post_id):
+        data = database.likes(**flask.request.json)
+        if int(post_id) != int(data.post_id):
+            return flask.make_response(flask.jsonify({"error": "post id modified"}), 400)
+        likes_user = db.get_user_likes(user_email=data.user_email)
+        if likes_user:
+            for like in likes_user:
+                if int(like.post_id) == int(post_id):
+                    return flask.make_response(flask.jsonify({"error": "cant like twice"}), 400)
+        db.add_like(data)
+        return flask.make_response(flask.jsonify({"like": data.__dict__}), 201)
+    return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
 
 @app.route("/post/like/<post_id>", methods=["GET"])
 def get_like_by_post(post_id):

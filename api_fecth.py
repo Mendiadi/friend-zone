@@ -111,7 +111,7 @@ class PostsAPI(API):
 
     def like_post(self,like:Like):
         res = self._session.post(self.base_url + f"/post/like/{like.post_id}", json=like.to_json())
-        print(res.text)
+        return res.text,res.status_code
 
     def get_likes_by_post(self,post_id):
 
@@ -121,5 +121,6 @@ class PostsAPI(API):
 if __name__ == '__main__':
     with PostsAPI(requests.session()) as session:
         a = session.get_posts_by_user("adim")
-        session.like_post(Like("adim333",a[0].post_id))
-        session.get_likes_by_post(a[0].post_id)
+        print(a)
+        print(session.like_post(Like("moshe12", 132)))
+

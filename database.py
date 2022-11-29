@@ -45,8 +45,10 @@ class DataBase:
                             foreign_key="user_email", reference=("user", "email"),
                             ondelete=True)
             db.create_table(likes, like_table, foreign_key="post_id", reference=("post", "post_id")
-                            , ondelete=True)
-            db.query_alter_table_forgkey("likes", foreign_key="user_email", reference=("user", "email"))
+                            , ondelete=True,onupdate=True)
+            db.query_alter_table_forgkey("likes", foreign_key="user_email", reference=("user", "email"),
+                                         ondelete=True,onupdate=True)
+
             db.commit()
             self.AUTO_INC_ = db.AUTO_INC
 
@@ -152,6 +154,7 @@ class DataBase:
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
+            print(like_.__dict__)
             like__ = db.insert_to(likes, like_)
             db.commit()
         return like__
