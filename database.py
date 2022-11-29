@@ -185,12 +185,13 @@ class DataBase:
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
+            print(data.__dict__)
             post_ = db.query_filter_by(post, "post_id", post_id, first=True)
             if not post_:
                 code = 0
-                db.commit()
+
             else:
                 db.query_update_table(post, data)
                 code = 1
-
+                db.commit()
         return code

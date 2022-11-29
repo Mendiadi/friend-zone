@@ -120,11 +120,23 @@ class PostsAPI(API):
         res = self._session.delete(self.base_url + f"/post/like/{like.post_id}/{like.user_email}")
         return res.text, res.status_code
 
+    def get_post_by_id(self, post_id):
+
+        res = self._session.get(self.base_url + f"/post/{post_id}")
+        if not res.ok:
+            return  res.text
+        return Post(**res.json()['post'])
+
+    def get_likes_by_email(self,email):
+        res = self._session.get(self.base_url + f"/like/{email}")
+        if res.ok:
+            return [Like(**like) for like in res.json()['likes']]
+        return res.text
 
 if __name__ == '__main__':
     with PostsAPI(requests.session()) as session:
         a = session.get_posts_by_user("adim")
         print(a)
         print(session.get_likes_by_post(132))
-        print(session.dislike_post(Like("moshe12", 132)))
-        print(session.get_likes_by_post(132))
+        for _ in range(10):
+            print(session.like_post(Like("adim333",132)))

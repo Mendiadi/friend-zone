@@ -1,8 +1,10 @@
+import dataclasses
 import enum
 import json
 import threading
 import time
 import tkinter as tk
+from collections import OrderedDict
 
 import requests
 
@@ -46,7 +48,29 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, h1, text, func_del=None, func_edit=None, post=None,like_count=None, func_like=None):
+    def create_post_label(root, h1, text, func_del=None, func_edit=None, post=None, like_count=None, func_like=None):
+
+        class PostComponent:
+            def __init__(self, can, can2, label, txt, like_label, like_btn, post):
+                self.can = can
+                self.can2 = can2
+                self.label = label
+                self.txt = txt
+                self.like_label = like_label
+                self.like_btn = like_btn
+                self.post = post
+
+            def refresh(self, likes_count, app):
+                self.txt.config(text=self.post.text)
+                self.like_label.config(text="likes: " + str(likes_count), width=len(text) + 1)
+                self.like_count = likes_count
+                if self.post.post_id not in [p.post_id for p in app.get_post_by_email(app.user)]:
+                    self.like_btn.config(text="like")
+                    self.like_btn.place_configure(x=468)
+                else:
+                    self.like_btn.config(text="dislike")
+                    self.like_btn.place_configure(x=450)
+
         color_bg = "grey"
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
@@ -57,9 +81,10 @@ class ComponentCreator:
         like_btn = tk.Button(can, text="Like", bg="grey", command=lambda: wrap(0))
         like_btn.place_configure(x=468, y=178)
         print(post)
-        like_count = tk.Label(can2, text=f"likes: {like_count}",
-                              font="none 8", height=0, width=len(text) + 1, bg=color_bg)
-        like_count.place_configure(x=100,y=100)
+        like_count = tk.Label(can, text=f"likes: {like_count}",
+                              font="none 8", bg=color_bg)
+        like_count.place_configure(x=1, y=1)
+
         def wrap(key):
             print(key)
             if key == 1:
@@ -81,7 +106,7 @@ class ComponentCreator:
         label.place_configure(x=0, y=0)
         can2.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
-        return can
+        return PostComponent(can, can2, label, txt, like_count, like_btn, post)
 
     @staticmethod
     def create_entry(root, text_var, hide=False):
@@ -149,28 +174,27 @@ class ScrolledWin(BasicWin):
 class PostViewWin(ScrolledWin):
     def __init__(self, win, geometry, app):
         super(PostViewWin, self).__init__(win, geometry, app)
-        self.posts = []
+        self.posts = OrderedDict()
 
     def like_post_onclick(self, post_id):
-        try:
-            print(post_id, "*****************************")
-            like = api_fecth.Like(self.app.user, post_id)
-            self.app.post_like(like)
-        except:
-            print(post_id)
+
+        like = api_fecth.Like(self.app.user, post_id)
+        self.app.post_like(like)
+
+        self.fecth_post(post_id)
 
     def edit_post_onclick(self, post):
         pop_win = tk.Tk("edit")
         pop_win.geometry("300x300")
-        post_edit_var = tk.StringVar()
-        e_entry = ComponentCreator.create_entry(pop_win, post_edit_var)
+
+        e_entry = ComponentCreator.create_entry(pop_win, None)
 
         def edit_click(post_):
             post_.text = e_entry.get()
 
             self.app.edit_post(post_)
-            from_all = True if self.app.state == AppStates.EXPLORE else False
-            self.fetch_all_posts(from_all)
+            # from_all = True if self.app.state == AppStates.EXPLORE else False
+            self.fecth_post(post.post_id)
             pop_win.destroy()
 
         e_entry.pack(pady=10)
@@ -182,9 +206,15 @@ class PostViewWin(ScrolledWin):
             from_all = True if self.app.state == AppStates.EXPLORE else False
             self.fetch_all_posts(from_all)
 
+    def fecth_post(self, post_id):
+        post = self.app.get_post_by_id(post_id)
+        likes_count = self.app.get_likes_by_post(post_id)
+        self.posts[post.post_id].post = post
+        self.posts[post.post_id].refresh(likes_count, self.app)
+
     def fetch_all_posts(self, from_all=False):
-        for post in self.posts:
-            post.destroy()
+        for post in self.posts.values():
+            post.can.destroy()
         self.posts.clear()
         posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
         print(posts)
@@ -193,14 +223,14 @@ class PostViewWin(ScrolledWin):
             if i > 25:
                 break
             if post.user_email == self.app.user:
-                conf_label = self.delete_post_onclick, self.edit_post_onclick, post,likes_count
+                conf_label = self.delete_post_onclick, self.edit_post_onclick, post, likes_count
             else:
-                conf_label = (None, None, post,likes_count)
+                conf_label = (None, None, post, likes_count)
             print(conf_label)
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
                                                    *conf_label, func_like=self.like_post_onclick)
-            self.posts.append(p)
-            p.pack()
+            self.posts[post.post_id] = p
+            p.can.pack()
 
         self.update_win()
 
@@ -235,13 +265,13 @@ class ExploreWin(PostViewWin):
         if not code:
             return
         self.fetch_all_posts(from_all=True)
+
         self.update_win()
 
 
 class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
-        self.posts = []
 
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
@@ -475,9 +505,9 @@ class App:
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.like_post(like)
             print(res[0])
-            if res[1] == 201:
-                return 1
-            return 0
+        if res[1] == 201:
+            return 1
+        return 0
 
     def register(self, email, password, re_password):
         if password != re_password:
@@ -516,11 +546,22 @@ class App:
 
         return res
 
-    def get_likes_by_post(self,post_id):
+    def get_likes_by_post(self, post_id):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_likes_by_post(post_id)
-        if not isinstance(res,int):
-            return 0
+
+        return res
+
+    def get_post_by_id(self, post_id):
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.get_post_by_id(post_id)
+            print(res)
+        return res
+
+    def get_post_by_email(self, email):
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.get_likes_by_email(email)
+            print(res)
         return res
 
     def login(self, email, password):
