@@ -45,6 +45,7 @@ class UsersAPI(API):
 
     def register(self, email, password):
         user = User(email, password)
+        print(user)
         res = self._session.post(self.base_url + "/register", json=user.to_json())
         if res.ok:
             return User(**res.json())
@@ -52,6 +53,7 @@ class UsersAPI(API):
 
     def login(self, email, password):
         user = User(email, password)
+        print(user)
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
 
