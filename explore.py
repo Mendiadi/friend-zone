@@ -96,11 +96,9 @@ class ScrolledWin(BasicWin):
         self.my_scrollbar = None
         super(ScrolledWin, self).__init__(win, geometry, app)
 
-
     def update_win(self):
         self.win.update()
         self.my_canvas.configure(scrollregion=self.my_canvas.bbox("all"))
-
 
     def load(self):
         self.main_frame = tk.Frame(self.win)
@@ -131,16 +129,21 @@ class ExploreWin(ScrolledWin):
         self.post_data = tk.StringVar()
         self.add_post_entry = None
 
+    def move_to_home_page(self):
+        self.app.state = AppStates.HOME
+        self.app.update_content()
 
     def load(self):
         super().load()
         btn = tk.Button(self.second_frame, text="create",
                         command=lambda: self.onclick(self.my_canvas, self.second_frame))
-        btn.pack()
-        ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack()
 
+        ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
+        ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page, "normal").pack(pady=5)
         self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
-        self.add_post_entry.pack()
+        self.add_post_entry.pack(pady=5)
+        btn.pack(pady=10)
+
         self.fetch_all_posts()
 
     def fetch_all_posts(self, ):
@@ -153,7 +156,8 @@ class ExploreWin(ScrolledWin):
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
                                                    self.delete_post_onclick, post.post_id)
             self.posts.append(p)
-            p.pack()
+
+            p.pack(pady=10)
         print(self.posts)
         self.update_win()
 
@@ -175,7 +179,6 @@ class ProfileWin(ScrolledWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
 
-
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
         self.app.update_content()
@@ -188,10 +191,7 @@ class ProfileWin(ScrolledWin):
 
             p.pack()
 
-
         self.update_win()
-
-
 
     def load(self):
         super().load()
@@ -208,7 +208,7 @@ class HomeWin(BasicWin):
         super(HomeWin, self).__init__(win, geometry, app)
         self.search_query = tk.StringVar()
         self.search_bar = ComponentCreator.create_entry(self.win, self.search_query)
-
+        self.explore_btn = ComponentCreator.create_button(self.win, "EXPLORE", self.explore_page_onclick, "normal")
         self.results = []
         self.result_labels = []
         self.run = True
@@ -217,6 +217,10 @@ class HomeWin(BasicWin):
     def kill(self):
         super().kill()
         self.run = False
+
+    def explore_page_onclick(self):
+        self.app.state = AppStates.EXPLORE
+        self.app.update_content()
 
     def search_onclick(self):
         if self.search_query.get():
@@ -247,11 +251,14 @@ class HomeWin(BasicWin):
         self.result_labels.clear()
         for u in res:
             a = ComponentCreator.create_user_label(self.win, u.email, self.move_to_user_page)
-            a.pack()
+            a.pack(pady=10)
             self.result_labels.append(a)
 
     def load(self):
+        self.explore_btn.pack(pady=10)
+        ComponentCreator.create_text_label(self.win,"Search for Users","cyan").pack(pady=5)
         self.search_bar.pack(pady=10)
+
 
 
 class RegisterWin(BasicWin):
@@ -284,7 +291,6 @@ class RegisterWin(BasicWin):
             print(response)
             self.password_field.delete(0, tk.END)
             self.re_password_field.delete(0, tk.END)
-
 
     def validate_input(self):
         if len(self.email_var.get()) < 3:
@@ -333,14 +339,13 @@ class LoginWin(BasicWin):
         response = self.app.login(self.email_var.get(), self.password_var.get())
         if response == 1:
             self.win.after_cancel(self.validate_job)
-            self.app.state = AppStates.EXPLORE
+            self.app.state = AppStates.HOME
             self.app.update_content()
 
         else:
             # show error
             print(response)
             self.password_field.delete(0, tk.END)
-
 
     def validate_input(self):
         if self.app.state == AppStates.LOGIN:
