@@ -256,9 +256,8 @@ class HomeWin(BasicWin):
 
     def load(self):
         self.explore_btn.pack(pady=10)
-        ComponentCreator.create_text_label(self.win,"Search for Users","cyan").pack(pady=5)
+        ComponentCreator.create_text_label(self.win, "Search for Users", "cyan").pack(pady=5)
         self.search_bar.pack(pady=10)
-
 
 
 class RegisterWin(BasicWin):
@@ -383,7 +382,7 @@ class App:
         return res
 
     def delete_post(self, post):
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(requests.session()) as session:
             res = session.delete_post(post)
             print(res[0])
             if res[1] == 200:
@@ -404,7 +403,7 @@ class App:
     def create_post(self, text):
         from api_fecth import CreatePost, Post
         post = CreatePost(text)
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(requests.session()) as session:
             res = session.create_post(post, self.user)
             if type(res) == Post:
 
@@ -413,7 +412,7 @@ class App:
                 return 0, res
 
     def get_posts(self, email):
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_posts_by_user(email)
             if type(res) == list:
                 return res
@@ -437,31 +436,35 @@ class App:
     def update_content(self):
         threading.Thread(target=self.state_gui, daemon=True).start()
 
+    def switch_page(self, page: type):
+        if type(self.root) != page:
+            self.root.kill()
+            self.root = page(self.win, self.MAXSIZE, self)
+            self.root.load()
+
     def state_gui(self):
 
-        if self.state == AppStates.EXPLORE and type(self.root) != ExploreWin:
-            self.root.kill()
-            self.root = ExploreWin(self.win, self.MAXSIZE, self)
-            self.posts = self.get_posts(self.user)
-            print(self.posts)
-            self.root.load()
+        if self.state == AppStates.EXPLORE:
+            page = ExploreWin
 
-        elif self.state == AppStates.REGISTER and type(self.root) != RegisterWin:
-            self.root.kill()
-            self.root = RegisterWin(self.win, self.MAXSIZE, self)
-            self.root.load()
-        elif self.state == AppStates.LOGIN and type(self.root) != LoginWin:
-            self.root.kill()
-            self.root = LoginWin(self.win, self.MAXSIZE, self)
-            self.root.load()
-        elif self.state == AppStates.HOME and type(self.root) != HomeWin:
-            self.root.kill()
-            self.root = HomeWin(self.win, self.MAXSIZE, self)
-            self.root.load()
-        elif self.state == AppStates.PROFILE and type(self.root) != ProfileWin:
-            self.root.kill()
-            self.root = ProfileWin(self.win, self.MAXSIZE, self)
-            self.root.load()
+        elif self.state == AppStates.REGISTER:
+
+            page = RegisterWin
+        elif self.state == AppStates.LOGIN:
+
+            page = LoginWin
+
+        elif self.state == AppStates.HOME:
+
+            page = HomeWin
+
+        elif self.state == AppStates.PROFILE:
+
+            page = ProfileWin
+
+        else:
+            raise Exception("we run for some errors right now...")
+        self.switch_page(page)
 
 
 def run_app():

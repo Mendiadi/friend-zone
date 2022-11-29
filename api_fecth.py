@@ -55,6 +55,20 @@ class UsersAPI(API):
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
 
+
+
+    def search(self,query):
+        if query == "":
+            query = " "
+        print(query)
+        res = self._session.get(self.base_url + f"/search/{query}")
+        return [User(**user) for user in res.json()['users']]
+
+
+class PostsAPI(API):
+    def __init__(self, session):
+        super().__init__(session)
+
     def create_post(self, post_data: CreatePost, user):
         res = self._session.post(self.base_url + f"/{user}/post", json=post_data.to_json())
         if res.ok:
@@ -72,16 +86,5 @@ class UsersAPI(API):
         res = self._session.delete(self.base_url + f"/post/delete/{post_id}")
         return res.text, res.status_code
 
-    def search(self,query):
-        if query == "":
-            query = " "
-        print(query)
-        res = self._session.get(self.base_url + f"/search/{query}")
-        return [User(**user) for user in res.json()['users']]
-
-
 if __name__ == '__main__':
-    with UsersAPI(requests.Session()) as s:
-        code = s.get_posts_by_user("adim333")
-
-        print(code)
+    ...
