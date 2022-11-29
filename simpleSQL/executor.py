@@ -425,6 +425,7 @@ class SimpleSQL:
 
     def query_filters(self, table: type, filters: str, first: bool = False):
         result = self._executor.execute_select(table.__name__, condition=filters)
+        print("[ DATABASE] ",result )
         if not result:
             return None
         return [table(**item.__dict__) for item in result] if not first else table(**result[0].__dict__)

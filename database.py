@@ -13,10 +13,12 @@ class post:
         self.text = text
         self.user_email = user_email
 
+
 class likes:
     def __init__(self, user_email, post_id):
         self.user_email = user_email
         self.post_id = post_id
+
 
 class DataBase:
 
@@ -37,7 +39,7 @@ class DataBase:
                               db.types.column(db.types.text(long=True)),
                               db.types.column(db.types.varchar(50), nullable=False))
             like_table = likes(db.types.column(db.types.varchar(50), nullable=False)
-                               , db.types.column(db.types.integer(),nullable=False))
+                               , db.types.column(db.types.integer(), nullable=False))
 
             db.create_table(user, user_table, primary_key="email")
             db.create_table(post, post_table, primary_key="post_id",
@@ -45,9 +47,9 @@ class DataBase:
                             foreign_key="user_email", reference=("user", "email"),
                             ondelete=True)
             db.create_table(likes, like_table, foreign_key="post_id", reference=("post", "post_id")
-                            , ondelete=True,onupdate=True)
+                            , ondelete=True, onupdate=True)
             db.query_alter_table_forgkey("likes", foreign_key="user_email", reference=("user", "email"),
-                                         ondelete=True,onupdate=True)
+                                         ondelete=True, onupdate=True)
 
             db.commit()
             self.AUTO_INC_ = db.AUTO_INC
@@ -113,6 +115,17 @@ class DataBase:
 
         return users
 
+    def delete_like(self, like):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            # like_ = db.query_filters(post, f"post_id = \"{like.post_id}\" AND user_email = \"{like.user_email}\""
+            #                          , first=True)
+            print(db.executor._cursor.statement)
+
+            db.delete(like)
+            db.commit()
+
     def delete_post(self, post_id):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
@@ -121,9 +134,10 @@ class DataBase:
             if post_:
                 db.query_delete_by(post, ("post_id", post_id))
                 code = 1
+                db.commit()
             else:
                 code = 0
-            db.commit()
+
         return code
 
     def get_all_posts(self):
@@ -134,7 +148,7 @@ class DataBase:
 
         return posts
 
-    def get_user_likes(self,user_email):
+    def get_user_likes(self, user_email):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
@@ -142,7 +156,7 @@ class DataBase:
 
         return likes_
 
-    def get_post_likes(self,post_id):
+    def get_post_likes(self, post_id):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
@@ -150,7 +164,7 @@ class DataBase:
 
         return likes_
 
-    def add_like(self,like_):
+    def add_like(self, like_):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
@@ -159,11 +173,11 @@ class DataBase:
             db.commit()
         return like__
 
-    def get_post_by_id(self,post_id):
+    def get_post_by_id(self, post_id):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",
                                create_and_ignore=True) as db:
-            post_ = db.query_filter_by(post,"post_id",post_id,first=True)
+            post_ = db.query_filter_by(post, "post_id", post_id, first=True)
 
         return post_
 
@@ -174,8 +188,9 @@ class DataBase:
             post_ = db.query_filter_by(post, "post_id", post_id, first=True)
             if not post_:
                 code = 0
+                db.commit()
             else:
                 db.query_update_table(post, data)
                 code = 1
-            db.commit()
+
         return code

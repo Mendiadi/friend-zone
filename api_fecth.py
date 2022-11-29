@@ -23,15 +23,14 @@ class Post(Model):
 
 @dataclasses.dataclass
 class Like(Model):
-    user_email:str
-    post_id:int
+    user_email: str
+    post_id: int
 
 
 @dataclasses.dataclass
 class User(Model):
     email: str
     password: str
-
 
 
 class API:
@@ -64,9 +63,7 @@ class UsersAPI(API):
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
 
-
-
-    def search(self,query):
+    def search(self, query):
         if query == "":
             query = " "
         print(query)
@@ -95,32 +92,37 @@ class PostsAPI(API):
         res = self._session.delete(self.base_url + f"/post/delete/{post_id}")
         return res.text, res.status_code
 
-
     def get_all_posts(self):
         res = self._session.get(self.base_url + f"/posts")
         if res.ok:
             return [Post(**p) for p in res.json()['posts']]
         return res.text
 
-    def edit_post(self,post:Post):
+    def edit_post(self, post: Post):
         print(post)
-        res = self._session.put(self.base_url + f"/post/edit/{post.post_id}",json=post.to_json())
+        res = self._session.put(self.base_url + f"/post/edit/{post.post_id}", json=post.to_json())
         if res.ok:
             return Post(**res.json()['post'])
         return res.text
 
-    def like_post(self,like:Like):
+    def like_post(self, like: Like):
         res = self._session.post(self.base_url + f"/post/like/{like.post_id}", json=like.to_json())
-        return res.text,res.status_code
+        return res.text, res.status_code
 
-    def get_likes_by_post(self,post_id):
-
-        res = self._session.get(self.base_url + f"/post/like/{post_id}>")
+    def get_likes_by_post(self, post_id):
+        print(self.base_url + f"/post/like/{post_id}")
+        res = self._session.get(self.base_url + f"/post/like/{post_id}")
         print(res.text)
+
+    def dislike_post(self, like):
+        res = self._session.delete(self.base_url + f"/post/like/{like.post_id}/{like.user_email}")
+        return res.text, res.status_code
+
 
 if __name__ == '__main__':
     with PostsAPI(requests.session()) as session:
         a = session.get_posts_by_user("adim")
         print(a)
-        print(session.like_post(Like("moshe12", 132)))
-
+        print(session.get_likes_by_post(132))
+        print(session.dislike_post(Like("moshe12", 132)))
+        print(session.get_likes_by_post(132))

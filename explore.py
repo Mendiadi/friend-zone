@@ -4,7 +4,6 @@ import threading
 import time
 import tkinter as tk
 
-
 import requests
 
 import api_fecth
@@ -47,7 +46,7 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, h1, text, func_del=None,func_edit=None, post=None,func_like=None):
+    def create_post_label(root, h1, text, func_del=None, func_edit=None, post=None, func_like=None):
         color_bg = "grey"
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
@@ -55,9 +54,10 @@ class ComponentCreator:
         label = tk.Label(can2, text=h1, font="none 20 bold", height=0, width=len(h1) + 1, bg="red")
         txt = tk.Label(can2, text=text, font="none 12", height=0, width=len(text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
-        like_btn = tk.Button(can,text="Like",bg="grey",command=lambda:wrap(0))
-        like_btn.place_configure(x=468,y=178)
+        like_btn = tk.Button(can, text="Like", bg="grey", command=lambda: wrap(0))
+        like_btn.place_configure(x=468, y=178)
         print(post)
+
         def wrap(key):
             print(key)
             if key == 1:
@@ -67,8 +67,9 @@ class ComponentCreator:
             else:
 
                 func_like(post.post_id)
+
         if func_del:
-            btn = tk.Button(can, text="X", command=lambda:wrap(1), font="none 12 bold", bg="red", border=0
+            btn = tk.Button(can, text="X", command=lambda: wrap(1), font="none 12 bold", bg="red", border=0
                             , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
             btn.place_configure(x=480, y=5)
         if func_edit:
@@ -148,32 +149,30 @@ class PostViewWin(ScrolledWin):
         super(PostViewWin, self).__init__(win, geometry, app)
         self.posts = []
 
-    def like_post_onclick(self,post_id):
+    def like_post_onclick(self, post_id):
         try:
-            print(post_id,"*****************************")
-            like = api_fecth.Like(self.app.user,post_id)
+            print(post_id, "*****************************")
+            like = api_fecth.Like(self.app.user, post_id)
             self.app.post_like(like)
         except:
             print(post_id)
-
 
     def edit_post_onclick(self, post):
         pop_win = tk.Tk("edit")
         pop_win.geometry("300x300")
         post_edit_var = tk.StringVar()
         e_entry = ComponentCreator.create_entry(pop_win, post_edit_var)
-        def edit_click(post_):
 
+        def edit_click(post_):
             post_.text = e_entry.get()
 
             self.app.edit_post(post_)
             from_all = True if self.app.state == AppStates.EXPLORE else False
             self.fetch_all_posts(from_all)
             pop_win.destroy()
+
         e_entry.pack(pady=10)
         ComponentCreator.create_button(pop_win, "edit", lambda: edit_click(post), "normal").pack(pady=10)
-
-
 
     def delete_post_onclick(self, post_id):
         print(post_id)
@@ -191,12 +190,12 @@ class PostViewWin(ScrolledWin):
             if i > 25:
                 break
             if post.user_email == self.app.user:
-                conf_label = self.delete_post_onclick,self.edit_post_onclick, post
+                conf_label = self.delete_post_onclick, self.edit_post_onclick, post
             else:
-                conf_label = (None,None,post)
+                conf_label = (None, None, post)
             print(conf_label)
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
-                                                   *conf_label,func_like=self.like_post_onclick)
+                                                   *conf_label, func_like=self.like_post_onclick)
             self.posts.append(p)
             p.pack()
 
@@ -469,9 +468,8 @@ class App:
                 return 1
             return 0
 
-    def post_like(self,like):
+    def post_like(self, like):
         with api_fecth.PostsAPI(requests.session()) as session:
-
             res = session.like_post(like)
             print(res[0])
             if res[1] == 201:
