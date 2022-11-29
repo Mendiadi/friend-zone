@@ -68,6 +68,13 @@ def delete_post(post_id):
         return flask.make_response(flask.jsonify({"deleted": "ok"}), 200)
     return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
 
+@app.route("/posts")
+def get_all_posts():
+    posts = db.get_all_posts()
+    posts = [post.__dict__ for post in posts]
+    return flask.make_response(flask.jsonify({"posts":posts}),200)
+
+
 @app.route("/search/<query>")
 def search(query):
     users = db.get_users()

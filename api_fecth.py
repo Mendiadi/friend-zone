@@ -86,5 +86,14 @@ class PostsAPI(API):
         res = self._session.delete(self.base_url + f"/post/delete/{post_id}")
         return res.text, res.status_code
 
+
+    def get_all_posts(self):
+        res = self._session.get(self.base_url + f"/posts")
+        if res.ok:
+            return [Post(**p) for p in res.json()['posts']]
+        return res.text
+
 if __name__ == '__main__':
-    ...
+    with PostsAPI(requests.session()) as session:
+        print(session.get_posts_by_user("adim333"))
+        print(session.get_all_posts())

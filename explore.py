@@ -54,8 +54,9 @@ class ComponentCreator:
             func(post_id)
 
         if func:
-            btn = tk.Button(can, text="del", command=wrap)
-            btn.place_configure(x=470, y=1)
+            btn = tk.Button(can, text="X", command=wrap, font="none 12 bold", bg="red", border=0
+                            , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
+            btn.place_configure(x=480, y=5)
         label.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
         return can
@@ -120,12 +121,41 @@ class ScrolledWin(BasicWin):
         self.my_canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
 
 
-class ExploreWin(ScrolledWin):
+class PostViewWin(ScrolledWin):
+    def __init__(self, win, geometry, app):
+        super(PostViewWin, self).__init__(win, geometry, app)
+        self.posts = []
+
+    def delete_post_onclick(self, post_id):
+        print(post_id)
+        if self.app.delete_post(post_id):
+            from_all = True if self.app.state == AppStates.EXPLORE else False
+            self.fetch_all_posts(from_all)
+
+    def fetch_all_posts(self,from_all=False):
+        for post in self.posts:
+            post.destroy()
+        self.posts.clear()
+        posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
+        print(posts)
+        for i, post in enumerate(posts):
+            if i > 25:
+                break
+            if post.user_email == self.app.user:
+                conf_label = self.delete_post_onclick, post.post_id
+            else:
+                conf_label = (None,)
+            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,*conf_label)
+            self.posts.append(p)
+            p.pack()
+
+        self.update_win()
+
+
+class ExploreWin(PostViewWin):
 
     def __init__(self, win, geometry, app):
         super(ExploreWin, self).__init__(win, geometry, app)
-        self.posts = []
-        self.logged_user = self.app.user
         self.post_data = tk.StringVar()
         self.add_post_entry = None
 
@@ -144,54 +174,25 @@ class ExploreWin(ScrolledWin):
         self.add_post_entry.pack(pady=5)
         btn.pack(pady=10)
 
-        self.fetch_all_posts()
-
-    def fetch_all_posts(self, ):
-        for post in self.posts:
-            post.destroy()
-        self.posts.clear()
-        for i, post in enumerate(self.app.get_posts(self.app.user)):
-            if i > 25:
-                break
-            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
-                                                   self.delete_post_onclick, post.post_id)
-            self.posts.append(p)
-
-            p.pack(pady=10)
-        print(self.posts)
-        self.update_win()
-
-    def delete_post_onclick(self, post_id):
-        print(post_id)
-        if self.app.delete_post(post_id):
-            self.fetch_all_posts()
+        self.fetch_all_posts(from_all=True)
 
     def onclick(self, c, root):
         # c means canvas to update scrollbar
         code, post = self.app.create_post(self.post_data.get())
         if not code:
             return
-        self.fetch_all_posts()
+        self.fetch_all_posts(from_all=True)
         self.update_win()
 
 
-class ProfileWin(ScrolledWin):
+class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
+        self.posts = []
 
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
         self.app.update_content()
-
-    def fetch_all_posts(self, ):
-        for i, post in enumerate(self.app.get_posts(self.app.temp_user_profile)):
-            if i > 25:
-                break
-            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text)
-
-            p.pack()
-
-        self.update_win()
 
     def load(self):
         super().load()
@@ -254,8 +255,13 @@ class HomeWin(BasicWin):
             a.pack(pady=10)
             self.result_labels.append(a)
 
+    def my_profile(self):
+        self.move_to_user_page(self.app.user)
+
     def load(self):
+        ComponentCreator.create_button(self.win, "My Profile", self.my_profile, "normal").pack(pady=5)
         self.explore_btn.pack(pady=10)
+
         ComponentCreator.create_text_label(self.win, "Search for Users", "cyan").pack(pady=5)
         self.search_bar.pack(pady=10)
 
@@ -419,6 +425,12 @@ class App:
             else:
                 print(res)
                 return []
+
+    def get_all_posts(self):
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.get_all_posts()
+            print(res)
+        return res
 
     def login(self, email, password):
 

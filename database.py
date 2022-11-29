@@ -113,3 +113,11 @@ class DataBase:
                 code = 0
             db.commit()
         return code
+
+    def get_all_posts(self):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            posts = db.query_all(post)
+
+        return posts
