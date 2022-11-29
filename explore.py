@@ -46,7 +46,7 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, h1, text, func_del=None, func_edit=None, post=None, func_like=None):
+    def create_post_label(root, h1, text, func_del=None, func_edit=None, post=None,like_count=None, func_like=None):
         color_bg = "grey"
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
@@ -57,7 +57,9 @@ class ComponentCreator:
         like_btn = tk.Button(can, text="Like", bg="grey", command=lambda: wrap(0))
         like_btn.place_configure(x=468, y=178)
         print(post)
-
+        like_count = tk.Label(can2, text=f"likes: {like_count}",
+                              font="none 8", height=0, width=len(text) + 1, bg=color_bg)
+        like_count.place_configure(x=100,y=100)
         def wrap(key):
             print(key)
             if key == 1:
@@ -187,12 +189,13 @@ class PostViewWin(ScrolledWin):
         posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
         print(posts)
         for i, post in enumerate(posts):
+            likes_count = self.app.get_likes_by_post(post.post_id)
             if i > 25:
                 break
             if post.user_email == self.app.user:
-                conf_label = self.delete_post_onclick, self.edit_post_onclick, post
+                conf_label = self.delete_post_onclick, self.edit_post_onclick, post,likes_count
             else:
-                conf_label = (None, None, post)
+                conf_label = (None, None, post,likes_count)
             print(conf_label)
             p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
                                                    *conf_label, func_like=self.like_post_onclick)
@@ -510,7 +513,14 @@ class App:
     def get_all_posts(self):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_all_posts()
-            print(res)
+
+        return res
+
+    def get_likes_by_post(self,post_id):
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.get_likes_by_post(post_id)
+        if not isinstance(res,int):
+            return 0
         return res
 
     def login(self, email, password):

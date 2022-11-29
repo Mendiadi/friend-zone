@@ -112,7 +112,9 @@ class PostsAPI(API):
     def get_likes_by_post(self, post_id):
         print(self.base_url + f"/post/like/{post_id}")
         res = self._session.get(self.base_url + f"/post/like/{post_id}")
-        print(res.text)
+        if not res.ok:
+            return  res.text
+        return res.json()['count']
 
     def dislike_post(self, like):
         res = self._session.delete(self.base_url + f"/post/like/{like.post_id}/{like.user_email}")
