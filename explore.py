@@ -43,6 +43,7 @@ class ComponentCreator:
 
     @staticmethod
     def create_post_label(root, h1, text, func=None, post_id=None):
+
         root.config(bg="cyan")
         can = tk.Canvas(root, height=200, width=500, bg="red")
         label = tk.Label(can, text=h1, font="none 20 bold", height=0, width=len(h1) + 1)
@@ -52,8 +53,9 @@ class ComponentCreator:
         def wrap():
             func(post_id)
 
-        btn = tk.Button(can, text="del", command=wrap)
-        btn.place_configure(x=470, y=1)
+        if func:
+            btn = tk.Button(can, text="del", command=wrap)
+            btn.place_configure(x=470, y=1)
         label.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
         return can
@@ -79,56 +81,65 @@ class BasicWin:
 
     def load(self): ...
 
-    def kill(self): ...
+    def kill(self):
+        for w in self.win.winfo_children():
+            w.destroy()
 
     def mainloop(self):
         self.win.mainloop()
 
 
-class ExploreWin(BasicWin):
+class ScrolledWin(BasicWin):
+    def __init__(self, win, geometry, app):
+        self.my_canvas = None
+        self.second_frame = None
+        self.my_scrollbar = None
+        super(ScrolledWin, self).__init__(win, geometry, app)
+
+
+    def update_win(self):
+        self.win.update()
+        self.my_canvas.configure(scrollregion=self.my_canvas.bbox("all"))
+
+
+    def load(self):
+        self.main_frame = tk.Frame(self.win)
+        self.main_frame.pack(fill=tk.BOTH, expand=1)
+        # canvas
+        self.my_canvas = tk.Canvas(self.main_frame)
+        self.my_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        # scrollbar
+        self.my_scrollbar = tk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.my_canvas.yview)
+        self.my_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # configure the canvas
+        self.my_canvas.configure(yscrollcommand=self.my_scrollbar.set)
+        self.my_canvas.bind('<Configure>', lambda e: self.update_win())
+
+        self.second_frame = tk.Frame(self.my_canvas)
+
+        self.my_canvas.create_window((0, 0), window=self.second_frame, anchor="nw")
+
+
+class ExploreWin(ScrolledWin):
 
     def __init__(self, win, geometry, app):
         super(ExploreWin, self).__init__(win, geometry, app)
-        self.my_canvas = None
         self.posts = []
         self.logged_user = self.app.user
-        self.second_frame = None
         self.post_data = tk.StringVar()
         self.add_post_entry = None
-        self.second_frame = None
 
-    def update_win(self, my_canvas):
-        self.win.update()
-        my_canvas.configure(scrollregion=my_canvas.bbox("all"))
-
-    def kill(self):
-        self.win.clipboard_clear()
 
     def load(self):
-        main_frame = tk.Frame(self.win)
-        main_frame.pack(fill=tk.BOTH, expand=1)
-        # canvas
-        my_canvas = tk.Canvas(main_frame)
-        my_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
-
-        # scrollbar
-        my_scrollbar = tk.Scrollbar(main_frame, orient=tk.VERTICAL, command=my_canvas.yview)
-        my_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # configure the canvas
-        my_canvas.configure(yscrollcommand=my_scrollbar.set)
-        my_canvas.bind('<Configure>', lambda e: self.update_win(my_canvas))
-
-        second_frame = tk.Frame(my_canvas)
-
-        my_canvas.create_window((0, 0), window=second_frame, anchor="nw")
-        btn = tk.Button(second_frame, text="create",
-                        command=lambda: self.onclick(my_canvas, second_frame))
+        super().load()
+        btn = tk.Button(self.second_frame, text="create",
+                        command=lambda: self.onclick(self.my_canvas, self.second_frame))
         btn.pack()
-        ComponentCreator.create_text_label(second_frame, "Your Feed").pack()
-        self.my_canvas = my_canvas
-        self.second_frame = second_frame
-        self.add_post_entry = ComponentCreator.create_entry(second_frame, self.post_data)
+        ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack()
+
+        self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
         self.add_post_entry.pack()
         self.fetch_all_posts()
 
@@ -144,7 +155,7 @@ class ExploreWin(BasicWin):
             self.posts.append(p)
             p.pack()
         print(self.posts)
-        self.update_win(self.my_canvas)
+        self.update_win()
 
     def delete_post_onclick(self, post_id):
         print(post_id)
@@ -157,18 +168,39 @@ class ExploreWin(BasicWin):
         if not code:
             return
         self.fetch_all_posts()
-        self.update_win(c)
+        self.update_win()
 
 
-class ProfileWin(BasicWin):
+class ProfileWin(ScrolledWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
 
-    def kill(self):
-        ...
+
+    def go_back_onclick(self):
+        self.app.state = AppStates.HOME
+        self.app.update_content()
+
+    def fetch_all_posts(self, ):
+        for i, post in enumerate(self.app.get_posts(self.app.temp_user_profile)):
+            if i > 25:
+                break
+            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text)
+
+            p.pack()
+
+
+        self.update_win()
+
+
 
     def load(self):
-        print(self.app.get_posts(self.app.temp_user_profile))
+        super().load()
+        ComponentCreator.create_text_label(self.second_frame, f"{self.app.temp_user_profile} Profile").pack()
+        back_btn = ComponentCreator.create_button(
+            self.second_frame, "Back", self.go_back_onclick, "normal"
+        )
+        back_btn.pack()
+        self.fetch_all_posts()
 
 
 class HomeWin(BasicWin):
@@ -176,17 +208,14 @@ class HomeWin(BasicWin):
         super(HomeWin, self).__init__(win, geometry, app)
         self.search_query = tk.StringVar()
         self.search_bar = ComponentCreator.create_entry(self.win, self.search_query)
-        self.search_btn = ComponentCreator.create_button(self.win,
-                                                         "Search", self.search_onclick, "normal")
+
         self.results = []
         self.result_labels = []
         self.run = True
         threading.Thread(target=self.search_thread, daemon=True).start()
 
     def kill(self):
-        self.search_bar.destroy()
-        self.search_btn.destroy()
-        self.clear_results()
+        super().kill()
         self.run = False
 
     def search_onclick(self):
@@ -222,9 +251,7 @@ class HomeWin(BasicWin):
             self.result_labels.append(a)
 
     def load(self):
-        pad = 10
-        self.search_bar.pack(pady=pad)
-        self.search_btn.pack(padx=10, pady=0)
+        self.search_bar.pack(pady=10)
 
 
 class RegisterWin(BasicWin):
@@ -258,15 +285,6 @@ class RegisterWin(BasicWin):
             self.password_field.delete(0, tk.END)
             self.re_password_field.delete(0, tk.END)
 
-    def kill(self):
-        self.email_text.destroy()
-        self.pass_text.destroy()
-        self.re_password_field.destroy()
-        self.register_btn.destroy()
-        self.email_field.destroy()
-        self.password_field.destroy()
-        self.re_pass_text.destroy()
-        self.win.clipboard_clear()
 
     def validate_input(self):
         if len(self.email_var.get()) < 3:
@@ -323,15 +341,6 @@ class LoginWin(BasicWin):
             print(response)
             self.password_field.delete(0, tk.END)
 
-    def kill(self):
-        self.bg.destroy()
-        self.email_text.destroy()
-        self.pass_text.destroy()
-        self.login_btn.destroy()
-        self.email_field.destroy()
-        self.password_field.destroy()
-        self.register_btn.destroy()
-        self.win.clipboard_clear()
 
     def validate_input(self):
         if self.app.state == AppStates.LOGIN:
@@ -359,7 +368,7 @@ class App:
         self.win = tk.Tk()
         self.user = None
         self.MAXSIZE = "1000x1000"
-        self.root = HomeWin(self.win, self.MAXSIZE, self)
+        self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
 
