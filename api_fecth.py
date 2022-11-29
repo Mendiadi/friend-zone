@@ -1,4 +1,5 @@
 import dataclasses
+import socket
 
 import requests
 
@@ -31,12 +32,14 @@ class Like(Model):
 class User(Model):
     email: str
     password: str
+    #todo list of following users
+    #todo list of users followers
 
 
 class API:
     def __init__(self, session: requests.Session):
         self._session = session
-        self.base_url = "http://127.0.0.1:5000"
+        self.base_url = "http://172.18.96.1:5000"
 
     def __enter__(self):
         return self
@@ -113,7 +116,7 @@ class PostsAPI(API):
         print(self.base_url + f"/post/like/{post_id}")
         res = self._session.get(self.base_url + f"/post/like/{post_id}")
         if not res.ok:
-            return  res.text
+            return res.text
         return res.json()['count']
 
     def dislike_post(self, like):
@@ -124,19 +127,16 @@ class PostsAPI(API):
 
         res = self._session.get(self.base_url + f"/post/{post_id}")
         if not res.ok:
-            return  res.text
+            return res.text
         return Post(**res.json()['post'])
 
-    def get_likes_by_email(self,email):
+    def get_likes_by_email(self, email):
         res = self._session.get(self.base_url + f"/like/{email}")
         if res.ok:
             return [Like(**like) for like in res.json()['likes']]
         return res.text
 
+
 if __name__ == '__main__':
     with PostsAPI(requests.session()) as session:
-        a = session.get_posts_by_user("adim")
-        print(a)
-        print(session.get_likes_by_post(132))
-        for _ in range(10):
-            print(session.like_post(Like("adim333",132)))
+        print(session.get_likes_by_email("adim333"))

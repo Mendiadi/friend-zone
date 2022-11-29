@@ -22,6 +22,7 @@ class AppStates(enum.Enum):
     EXPLORE = 2
     REGISTER = 3
     PROFILE = 4
+    LIKE_VIEW = 5
 
 
 class ComponentCreator:
@@ -212,6 +213,23 @@ class PostViewWin(ScrolledWin):
         self.posts[post.post_id].post = post
         self.posts[post.post_id].refresh(likes_count, self.app)
 
+    def fetch_liked_posts(self):
+        for post in self.posts.values():
+            post.can.destroy()
+        posts = [like.post_id for like in self.app.get_likes_by_email(self.app.user)]
+        for post in posts:
+            p = self.app.get_post_by_id(post)
+            likes_count = self.app.get_likes_by_post(post)
+
+            if p.user_email == self.app.user:
+                conf_label = self.delete_post_onclick, self.edit_post_onclick, p, likes_count
+            else:
+                conf_label = (None, None, post, likes_count)
+            self.posts[post] = ComponentCreator.create_post_label(self.second_frame,p.user_email,
+                                                                  p.text,*conf_label,func_like=self.like_post_onclick)
+            self.posts[post].can.pack()
+        self.update_win()
+
     def fetch_all_posts(self, from_all=False):
         for post in self.posts.values():
             post.can.destroy()
@@ -269,6 +287,19 @@ class ExploreWin(PostViewWin):
         self.update_win()
 
 
+class LikesViewWin(PostViewWin):
+    def __init__(self, win, geometry, app):
+        super(LikesViewWin, self).__init__(win, geometry, app)
+
+    def on_back_click(self):
+        self.app.state = AppStates.PROFILE
+        self.app.update_content()
+
+    def load(self):
+        super(LikesViewWin, self).load()
+        ComponentCreator.create_button(self.second_frame,"back",self.on_back_click,"normal").pack()
+        self.fetch_liked_posts()
+
 class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
@@ -277,9 +308,17 @@ class ProfileWin(PostViewWin):
         self.app.state = AppStates.HOME
         self.app.update_content()
 
+    def my_likes_onclick(self):
+        self.app.state = AppStates.LIKE_VIEW
+        self.app.update_content()
+
     def load(self):
         super().load()
         ComponentCreator.create_text_label(self.second_frame, f"{self.app.temp_user_profile} Profile").pack()
+        if self.app.user == self.app.temp_user_profile:
+            ComponentCreator.create_button(
+                self.second_frame, "my likes", self.my_likes_onclick, "normal"
+            ).pack()
         back_btn = ComponentCreator.create_button(
             self.second_frame, "Back", self.go_back_onclick, "normal"
         )
@@ -291,6 +330,7 @@ class HomeWin(BasicWin):
     def __init__(self, win, geometry, app):
         super(HomeWin, self).__init__(win, geometry, app)
         self.search_query = tk.StringVar()
+        self.win.config(bg="grey")
         self.search_bar = ComponentCreator.create_entry(self.win, self.search_query)
         self.explore_btn = ComponentCreator.create_button(self.win, "EXPLORE", self.explore_page_onclick, "normal")
         self.results = []
@@ -370,6 +410,7 @@ class RegisterWin(BasicWin):
         response = self.app.register(self.email_var.get(),
                                      self.password_var.get(), self.re_password_var.get())
         if response == 1:
+            self.win.after_cancel(self.validate_job)
             self.kill()
             self.app.state = AppStates.LOGIN
             self.app.update_content()
@@ -405,7 +446,7 @@ class RegisterWin(BasicWin):
 
     def kill(self):
         super().kill()
-        self.win.after(self.validate_job)
+
 
 
 class LoginWin(BasicWin):
@@ -571,6 +612,7 @@ class App:
         # response bad return not ok
         with api_fecth.UsersAPI(requests.session()) as session:
             res = session.login(email, password)
+
         if res[1] == 200:
             print(res)
             self.user = email
@@ -605,11 +647,17 @@ class App:
         elif self.state == AppStates.PROFILE:
 
             page = ProfileWin
-
+        elif self.state == AppStates.LIKE_VIEW:
+            page = LikesViewWin
         else:
             raise Exception("we run for some errors right now...")
         self.switch_page(page)
 
+    def get_likes_by_email(self,email):
+
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.get_likes_by_email(email)
+        return res
 
 def run_app():
     app = App()

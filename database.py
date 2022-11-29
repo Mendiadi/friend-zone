@@ -126,6 +126,13 @@ class DataBase:
             db.delete(like)
             db.commit()
 
+    def reset(self):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            db.drop_table(likes)
+            db.drop_table(post)
+
     def delete_post(self, post_id):
         with simpleSQL.connect(host="localhost", user="root",
                                password="7874", database="fbclone",

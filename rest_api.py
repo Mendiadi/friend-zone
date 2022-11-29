@@ -1,4 +1,6 @@
 import hashlib
+import socket
+
 import flask
 # my imports
 import database
@@ -157,4 +159,5 @@ def get_like_by_email(user_email):
     return flask.make_response(flask.jsonify({"likes": []}), 200)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+
+    app.run(debug=True,host=socket.gethostbyname(socket.gethostname()))
