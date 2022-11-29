@@ -18,6 +18,7 @@ class AppStates(enum.Enum):
     LOGIN = 1
     EXPLORE = 2
     REGISTER = 3
+    PROFILE = 4
 
 
 class ComponentCreator:
@@ -32,12 +33,13 @@ class ComponentCreator:
         return label
 
     @staticmethod
-    def create_user_label(root,email):
-        can = tk.Canvas(root,bg="red")
-        label = tk.Label(can, text=email, font="none 20 bold", height=0, width=len(email) + 1)
-        label.place_configure(x=100, y=100)
-        return can
+    def create_user_label(root, email, func):
+        # can = tk.Canvas(root,bg="red",height=50,width=100)
+        # label = tk.Label(can, text=email, font="none 12 bold", height=0, width=len(email),bg="red")
+        # label.place_configure(x=15, y=15)
 
+        can = tk.Button(root, text=email, bg="red", border=0, font="none 12 bold", command=lambda: func(email))
+        return can
 
     @staticmethod
     def create_post_label(root, h1, text, func=None, post_id=None):
@@ -47,9 +49,7 @@ class ComponentCreator:
         txt = tk.Label(can, text=text, font="none 12", height=0, width=len(text) + 1, bg="red")
         txt.place_configure(x=100, y=100)
 
-
         def wrap():
-
             func(post_id)
 
         btn = tk.Button(can, text="del", command=wrap)
@@ -146,7 +146,6 @@ class ExploreWin(BasicWin):
         print(self.posts)
         self.update_win(self.my_canvas)
 
-
     def delete_post_onclick(self, post_id):
         print(post_id)
         if self.app.delete_post(post_id):
@@ -161,23 +160,33 @@ class ExploreWin(BasicWin):
         self.update_win(c)
 
 
+class ProfileWin(BasicWin):
+    def __init__(self, win, geometry, app):
+        super(ProfileWin, self).__init__(win, geometry, app)
+
+    def kill(self):
+        ...
+
+    def load(self):
+        print(self.app.get_posts(self.app.temp_user_profile))
+
 
 class HomeWin(BasicWin):
     def __init__(self, win, geometry, app):
         super(HomeWin, self).__init__(win, geometry, app)
         self.search_query = tk.StringVar()
-        self.search_bar = ComponentCreator.create_entry(self.win,self.search_query)
+        self.search_bar = ComponentCreator.create_entry(self.win, self.search_query)
         self.search_btn = ComponentCreator.create_button(self.win,
-                                                         "Search",self.search_onclick,"normal")
+                                                         "Search", self.search_onclick, "normal")
         self.results = []
         self.result_labels = []
         self.run = True
-        threading.Thread(target=self.search_thread,daemon=True).start()
-
+        threading.Thread(target=self.search_thread, daemon=True).start()
 
     def kill(self):
         self.search_bar.destroy()
         self.search_btn.destroy()
+        self.clear_results()
         self.run = False
 
     def search_onclick(self):
@@ -193,25 +202,29 @@ class HomeWin(BasicWin):
                 temp = self.search_query.get()
                 self.search_onclick()
 
+    def move_to_user_page(self, email):
+        print("*****************move")
+        self.app.state = AppStates.PROFILE
+        self.app.temp_user_profile = email
+        self.app.update_content()
 
-
-
-    def fetch_results(self,res):
-        print(res)
+    def clear_results(self):
         for l in self.result_labels:
             l.destroy()
+
+    def fetch_results(self, res):
+        print(res)
+        self.clear_results()
         self.result_labels.clear()
         for u in res:
-            a = ComponentCreator.create_user_label(self.win,u.email)
+            a = ComponentCreator.create_user_label(self.win, u.email, self.move_to_user_page)
             a.pack()
             self.result_labels.append(a)
-
 
     def load(self):
         pad = 10
         self.search_bar.pack(pady=pad)
-        self.search_btn.pack(padx=10,pady=0)
-
+        self.search_btn.pack(padx=10, pady=0)
 
 
 class RegisterWin(BasicWin):
@@ -348,8 +361,9 @@ class App:
         self.MAXSIZE = "1000x1000"
         self.root = HomeWin(self.win, self.MAXSIZE, self)
         self.root.load()
+        self.temp_user_profile = None
 
-    def search(self,query):
+    def search(self, query):
         with api_fecth.UsersAPI(requests.session()) as session:
             res = session.search(query)
         return res
@@ -428,8 +442,13 @@ class App:
             self.root.load()
         elif self.state == AppStates.HOME and type(self.root) != HomeWin:
             self.root.kill()
-            self.root = HomeWin(self.win,self.MAXSIZE,self)
+            self.root = HomeWin(self.win, self.MAXSIZE, self)
             self.root.load()
+        elif self.state == AppStates.PROFILE and type(self.root) != ProfileWin:
+            self.root.kill()
+            self.root = ProfileWin(self.win, self.MAXSIZE, self)
+            self.root.load()
+
 
 def run_app():
     app = App()
