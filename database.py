@@ -13,6 +13,10 @@ class post:
         self.text = text
         self.user_email = user_email
 
+class likes:
+    def __init__(self, user_email, post_id):
+        self.user_email = user_email
+        self.post_id = post_id
 
 class DataBase:
 
@@ -32,10 +36,17 @@ class DataBase:
             post_table = post(db.types.column(db.types.integer(), auto_increment=True),
                               db.types.column(db.types.text(long=True)),
                               db.types.column(db.types.varchar(50), nullable=False))
+            like_table = likes(db.types.column(db.types.varchar(50), nullable=False)
+                               , db.types.column(db.types.integer(),nullable=False))
+
             db.create_table(user, user_table, primary_key="email")
             db.create_table(post, post_table, primary_key="post_id",
                             auto_increment_value=100,
-                            foreign_key="user_email", reference=("user", "email"),ondelete=True)
+                            foreign_key="user_email", reference=("user", "email"),
+                            ondelete=True)
+            db.create_table(likes, like_table, foreign_key="post_id", reference=("post", "post_id")
+                            , ondelete=True)
+            db.query_alter_table_forgkey("likes", foreign_key="user_email", reference=("user", "email"))
             db.commit()
             self.AUTO_INC_ = db.AUTO_INC
 
@@ -120,6 +131,38 @@ class DataBase:
             posts = db.query_all(post)
 
         return posts
+
+    def get_user_likes(self,user_email):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            likes_ = db.query_filter_by(likes, "user_email", user_email)
+
+        return likes_
+
+    def get_post_likes(self,post_id):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            likes_ = db.query_filter_by(likes, "post_id", post_id)
+
+        return likes_
+
+    def add_like(self,like_):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            like__ = db.insert_to(likes, like_)
+            db.commit()
+        return like__
+
+    def get_post_by_id(self,post_id):
+        with simpleSQL.connect(host="localhost", user="root",
+                               password="7874", database="fbclone",
+                               create_and_ignore=True) as db:
+            post_ = db.query_filter_by(post,"post_id",post_id,first=True)
+
+        return post_
 
     def update_post(self, data, post_id):
         with simpleSQL.connect(host="localhost", user="root",

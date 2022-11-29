@@ -97,6 +97,27 @@ def update_post(post_id):
         return flask.make_response(flask.jsonify({"error": "something went wrong"}), 400)
     return flask.make_response(flask.jsonify({"post": data.__dict__}), 201)
 
+@app.route("/post/like/<post_id>", methods=["POST"])
+def like_post(post_id):
+    data = database.likes(**flask.request.json)
+    if int(post_id) != int(data.post_id):
+        return flask.make_response(flask.jsonify({"error": "post id modified"}), 400)
+    for like in db.get_user_likes(user_email=data.user_email):
+        if int(like.post_id) == int(post_id):
+            return flask.make_response(flask.jsonify({"error": "cant like twice"}), 400)
+    db.add_like(data)
+    return flask.make_response(flask.jsonify({"like": data.__dict__}), 201)
+
+
+@app.route("/post/like/<post_id>", methods=["GET"])
+def get_like_by_post(post_id):
+    if not db.get_post_by_id(post_id):
+        return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
+    like_ = db.get_post_likes(post_id)
+    if like_:
+        return flask.make_response(flask.jsonify({"likes": [like__.__dict__
+                                                            for like__ in like_],"count":len(like_)}), 201)
+    return flask.make_response(flask.jsonify({"error": "something went wrong"}), 400)
 
 if __name__ == '__main__':
     app.run(debug=True)

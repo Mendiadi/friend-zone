@@ -19,14 +19,19 @@ class Post(Model):
     post_id: int
     text: str
     user_email: str
-    # likes:int
+
+
+@dataclasses.dataclass
+class Like(Model):
+    user_email:str
+    post_id:int
 
 
 @dataclasses.dataclass
 class User(Model):
     email: str
     password: str
-    # like:list[post_id]
+
 
 
 class API:
@@ -104,7 +109,17 @@ class PostsAPI(API):
             return Post(**res.json()['post'])
         return res.text
 
+    def like_post(self,like:Like):
+        res = self._session.post(self.base_url + f"/post/like/{like.post_id}", json=like.to_json())
+        print(res.text)
+
+    def get_likes_by_post(self,post_id):
+
+        res = self._session.get(self.base_url + f"/post/like/{post_id}>")
+        print(res.text)
+
 if __name__ == '__main__':
     with PostsAPI(requests.session()) as session:
-        print(session.get_posts_by_user("adim333"))
-        print(session.get_all_posts())
+        a = session.get_posts_by_user("adim")
+        session.like_post(Like("adim333",a[0].post_id))
+        session.get_likes_by_post(a[0].post_id)
