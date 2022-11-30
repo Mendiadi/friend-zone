@@ -297,7 +297,12 @@ class ExploreWin(PostViewWin):
 
     def onclick(self, c, root):
         # c means canvas to update scrollbar
-        code, post = self.app.create_post(self.post_data.get())
+        data = self.post_data.get()
+        self.add_post_entry.delete(0,tk.END)
+        if not data:
+
+            return
+        code, post = self.app.create_post(data)
         if not code:
             return
         self.fetch_all_posts(from_all=True)
@@ -428,6 +433,8 @@ class RegisterWin(BasicWin):
         super(RegisterWin, self).__init__(win, geometry, app)
         self.register_btn = ComponentCreator.create_button(self.win, "Register",
                                                            self.register_btn_onclick, "normal", (5, 60))
+        self.back_btn = ComponentCreator.create_button(self.win, "Back",
+                                                           self.back_to_login, "normal", (5, 60))
         self.email_var = tk.StringVar()
         self.password_var = tk.StringVar()
         self.re_password_var = tk.StringVar()
@@ -438,6 +445,10 @@ class RegisterWin(BasicWin):
         self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
         self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
         self.re_pass_text = ComponentCreator.create_text_label(self.win, "Your Password Again:", color="light blue")
+
+    def back_to_login(self):
+        self.app.state = AppStates.LOGIN
+        self.app.update_content()
 
     def register_btn_onclick(self):
 
@@ -476,6 +487,7 @@ class RegisterWin(BasicWin):
         self.re_password_field.pack(pady=pad)
 
         self.register_btn.pack(pady=pad)
+        self.back_btn.pack(pady=pad)
         self.validate_input()
 
     def kill(self):
