@@ -132,6 +132,7 @@ class BasicWin:
         self.win = win
         self.app = app
         self.win.geometry(geometry)
+        self.win.resizable(False, False)
 
     def load(self): ...
 
@@ -275,11 +276,19 @@ class ExploreWin(PostViewWin):
     def load(self):
         super().load()
         btn = tk.Button(self.second_frame, text="POST",
-                        command=lambda: self.onclick(self.my_canvas, self.second_frame))
+                        command=lambda: self.onclick(self.my_canvas, self.second_frame),
+                        bg="deepskyblue", border=0, font="none 15")
 
         ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
-        ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page, "normal").pack(pady=5)
-        ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed, "normal").pack(pady=5)
+        home_btn = ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page,
+                                                  "normal", size=(2, 10))
+        home_btn.config(border=0, font="none 10 bold")
+        home_btn.pack(pady=5)
+        ref_btn = ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed,
+                                                 "normal", size=(2, 10))
+        ref_btn.config(border=0, font="none 10 bold")
+
+        ref_btn.pack(pady=5)
         self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
         self.add_post_entry.pack(pady=5)
         btn.pack(pady=10)
@@ -348,6 +357,7 @@ class HomeWin(BasicWin):
         self.search_bar = ComponentCreator.create_entry(self.win, self.search_query)
         self.explore_btn = ComponentCreator.create_button(self.win, "EXPLORE", self.explore_page_onclick,
                                                           "normal", size=(2, 10))
+        self.explore_btn.config(border=0, font="none 12 bold", bg="deepskyblue3")
         self.results = []
         self.result_labels = []
         self.run = True
@@ -404,11 +414,12 @@ class HomeWin(BasicWin):
     def load(self):
 
         self.bg.place(x=0, y=0)
-        ComponentCreator.create_button(self.win, "My Profile", self.my_profile, "normal", size=(2, 10)).place(x=670,
-                                                                                                              y=70)
+        profile_btn = ComponentCreator.create_button(self.win, "My Profile", self.my_profile, "normal", size=(2, 10))
+        profile_btn.config(border=0, font="none 12 bold", bg="deepskyblue3")
+        profile_btn.place(x=650, y=70)
         self.explore_btn.place(x=300, y=70)
 
-        ComponentCreator.create_text_label(self.win, "Search for Users", "cyan").place(x=460, y=110)
+        ComponentCreator.create_text_label(self.win, "Search for Users", "cyan", font_size=17).place(x=430, y=110)
         self.search_bar.place(x=370, y=150)
 
 
@@ -480,6 +491,7 @@ class LoginWin(BasicWin):
         self.bg.image = img
         self.login_btn = ComponentCreator.create_button(self.win, "Login",
                                                         self.login_btn_onclick, "normal", (5, 60))
+        self.login_btn.config(border=0)
         self.email_var = tk.StringVar()
         self.password_var = tk.StringVar()
         self.email_field = ComponentCreator.create_entry(self.win, self.email_var)
@@ -488,6 +500,7 @@ class LoginWin(BasicWin):
         self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
         self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
         self.register_btn = ComponentCreator.create_button(self.win, "sign up", self.sign_up_page, "normal", (5, 60))
+        self.register_btn.config(border=0)
         self.error_plot = None
 
     def plot_error(self, info):
@@ -542,17 +555,15 @@ class App:
         self.win = tk.Tk()
         self.user = None
         self.MAXSIZE = "1000x1000"
-        self.root = HomeWin(self.win, self.MAXSIZE, self)
+        self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
-
 
     def test_connection(self):
         with api_fecth.UsersAPI(requests.session()) as session:
             res = session.test_connection()
         if res == 0:
-            messagebox.showerror("no connection","your connection is disabled")
-
+            messagebox.showerror("no connection", "your connection is disabled")
 
     def search(self, query):
         with api_fecth.UsersAPI(requests.session()) as session:
