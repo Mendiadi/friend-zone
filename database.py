@@ -1,6 +1,8 @@
 import simpleSQL
 
 
+
+
 class user:
     def __init__(self, email, password):
         self.email = email
@@ -22,16 +24,24 @@ class likes:
 
 class DataBase:
 
+
+
     @staticmethod
-    def get():
-        return DataBase()
+    def get(conf):
+        return DataBase(conf)
 
     def AUTO_INC(self):
         return self.AUTO_INC_
 
-    def __init__(self):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+    def __init__(self,app_conf):
+
+
+        self.host = app_conf.db_host
+        self.user = app_conf.user
+        self.password = app_conf.password
+        self.database = app_conf.database
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             user_table = user(db.types.column(db.types.varchar(50), nullable=False),
                               db.types.column(db.types.varchar(100), nullable=False))
@@ -55,8 +65,8 @@ class DataBase:
             self.AUTO_INC_ = db.AUTO_INC
 
     def add_user(self, user_obj: user):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             if not db.query_filter_by(user, "email", user_obj.email, first=True):
                 db.insert_to(user, user_obj)
@@ -67,8 +77,8 @@ class DataBase:
         return code
 
     def add_post(self, post_obj: post):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
 
             if not db.query_filter_by(post, "post_id", post_obj.post_id, first=True):
@@ -80,8 +90,8 @@ class DataBase:
         return code
 
     def remove_user(self, email):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             if db.query_filter_by(user, "email", email, first=True):
                 db.query_delete_by(user, ("email", email))
@@ -92,32 +102,32 @@ class DataBase:
         return code
 
     def get_user(self, email):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             user_ = db.query_filter_by(user, "email", email, first=True)
 
         return user_
 
     def get_posts_by_user(self, user_email):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             users = db.query_filter_by(post, "user_email", user_email)
 
         return users
 
     def get_users(self):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             users = db.query_all(user)
 
         return users
 
     def delete_like(self, like):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             # like_ = db.query_filters(post, f"post_id = \"{like.post_id}\" AND user_email = \"{like.user_email}\""
             #                          , first=True)
@@ -127,15 +137,15 @@ class DataBase:
             db.commit()
 
     def reset(self):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             db.drop_table(likes)
             db.drop_table(post)
 
     def delete_post(self, post_id):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             post_ = db.query_filter_by(post, "post_id", post_id, first=True)
             if post_:
@@ -148,32 +158,32 @@ class DataBase:
         return code
 
     def get_all_posts(self):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             posts = db.query_all(post)
 
         return posts
 
     def get_user_likes(self, user_email):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             likes_ = db.query_filter_by(likes, "user_email", user_email)
 
         return likes_
 
     def get_post_likes(self, post_id):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             likes_ = db.query_filter_by(likes, "post_id", post_id)
 
         return likes_
 
     def add_like(self, like_):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             print(like_.__dict__)
             like__ = db.insert_to(likes, like_)
@@ -181,16 +191,16 @@ class DataBase:
         return like__
 
     def get_post_by_id(self, post_id):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             post_ = db.query_filter_by(post, "post_id", post_id, first=True)
 
         return post_
 
     def update_post(self, data, post_id):
-        with simpleSQL.connect(host="localhost", user="root",
-                               password="7874", database="fbclone",
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
                                create_and_ignore=True) as db:
             print(data.__dict__)
             post_ = db.query_filter_by(post, "post_id", post_id, first=True)

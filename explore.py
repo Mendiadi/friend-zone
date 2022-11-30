@@ -577,15 +577,16 @@ class LoginWin(BasicWin):
 
 def require_connection(func):
     def wrapper(*args, **kwargs):
-        try:
-            with api_fecth.API(requests.session()) as session:
-                res = session.test_connection()
-            if res == 0:
-                messagebox.showerror("no connection", "your connection is disabled")
-        except (ConnectionError):
-            return
-        res = func(*args, **kwargs)
-        return res
+
+        with api_fecth.API(requests.session()) as session:
+            res = session.test_connection()
+
+        if res == 0:
+            messagebox.showerror("no connection", "your connection is disabled")
+        else:
+            return func(*args, **kwargs)
+
+        return {"error":"no connection"}
 
     return wrapper
 
@@ -747,3 +748,7 @@ class App:
 def run_app():
     app = App()
     app.root.mainloop()
+
+if __name__ == '__main__':
+    app = App()
+    print(app.login("email", "pass"))

@@ -3,11 +3,16 @@ import socket
 
 import flask
 # my imports
+import configure
 import database
 
-app = flask.Flask("fb_clone")
 
-db = database.DataBase.get()
+app_config = configure.AppConfigure.load()
+if not app_config:
+    print("cant run")
+    exit(-1)
+app = flask.Flask(app_config.name)
+db = database.DataBase.get(app_config)
 
 
 @app.route("/")
@@ -159,5 +164,5 @@ def get_like_by_email(user_email):
     return flask.make_response(flask.jsonify({"likes": []}), 200)
 
 if __name__ == '__main__':
-
-    app.run(debug=True)
+    print(app_config)
+    app.run(debug=True,host=app_config.net_host,port=app_config.port)
