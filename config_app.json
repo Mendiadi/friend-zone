@@ -1,14 +1,14 @@
 {
   "db":
   {
-    "host": null,
-    "user": null,
-    "password": null,
-    "database": null
+    "host": "localhost",
+    "user": "root",
+    "password": "7874",
+    "database": "fbclone"
   },
   "net": {
-    "port": null,
-    "host": null,
-    "name": null
+    "port": 5000,
+    "host": "127.0.0.1",
+    "name": "fb_clone"
   }
 }

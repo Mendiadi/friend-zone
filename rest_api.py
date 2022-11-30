@@ -1,7 +1,9 @@
+import functools
 import hashlib
 import socket
 
 import flask
+
 # my imports
 import configure
 import database
@@ -12,7 +14,18 @@ if not app_config:
     print("cant run")
     exit(-1)
 app = flask.Flask(app_config.name)
+app.secret_key = "secret"
 db = database.DataBase.get(app_config)
+session_login = {}
+
+def login_require(func):
+    @functools.wraps(func)
+    def wrapper(*args,**kwargs):
+
+        if "user" not in session_login:
+            return flask.make_response(flask.jsonify({"error": "logged in required"}), 400)
+        return func(*args,**kwargs)
+    return wrapper
 
 
 @app.route("/")
@@ -39,12 +52,27 @@ def login():
         return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
     if hash != user_from_db.password:
         return flask.make_response(flask.jsonify({"error": "user pass wrong"}), 400)
-    return flask.make_response(flask.jsonify({"login": "ok"}), 200)
+
+    session_login["user"] = user_from_db.email
+
+    return flask.make_response(flask.jsonify({"login": f"user {user_from_db.email}"}), 200)
 
 
-@app.route("/<user_>/post", methods=["POST"])
-def create_post(user_):
-    user_from_db = db.get_user(user_)
+@app.route("/logout")
+@login_require
+def logout():
+    print(session_login)
+
+    u = session_login.pop("user",None)
+
+    return flask.make_response(flask.jsonify({"logout": f"user {u}"}), 200)
+
+
+
+@app.route("/post", methods=["POST"])
+@login_require
+def create_post():
+    user_from_db = db.get_user(session_login.get("user"))
     if not user_from_db:
         return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
     post_data = database.post(None, flask.request.json['text'], None)
@@ -56,7 +84,7 @@ def create_post(user_):
 
 
 @app.route("/<user_>/post", methods=["GET"])
-def get_posts(user_):
+def get_posts_by_user(user_):
     user_from_db = db.get_user(user_)
     if not user_from_db:
         return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
@@ -70,6 +98,7 @@ def get_posts(user_):
 
 
 @app.route("/post/delete/<post_id>", methods=["DELETE"])
+@login_require
 def delete_post(post_id):
     if db.delete_post(post_id):
         return flask.make_response(flask.jsonify({"deleted": "ok"}), 200)
@@ -95,6 +124,7 @@ def search(query):
 
 
 @app.route("/post/edit/<post_id>", methods=["PUT"])
+@login_require
 def update_post(post_id):
     data = database.post(**flask.request.json)
 
@@ -106,6 +136,7 @@ def update_post(post_id):
 
 
 @app.route("/post/like/<post_id>", methods=["POST"])
+@login_require
 def like_post(post_id):
     if db.get_post_by_id(post_id):
         data = database.likes(**flask.request.json)
@@ -121,22 +152,7 @@ def like_post(post_id):
         return flask.make_response(flask.jsonify({"like": data.__dict__}), 201)
     return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
 
-#
-# @app.route("/post/like/<post_id>/<user_email>", methods=["DELETE"])
-# def dislike_post(post_id, user_email):
-#     if db.get_post_by_id(post_id):
-#         data = database.likes(user_email, post_id)
-#         print(data.__dict__)
-#         if int(post_id) != int(data.post_id):
-#             return flask.make_response(flask.jsonify({"error": "post id modified"}), 400)
-#         likes_user = db.get_user_likes(user_email=data.user_email)
-#         if not likes_user:
-#             for like in likes_user:
-#                 if int(like.post_id) == int(post_id):
-#                     return flask.make_response(flask.jsonify({"error": "like not found"}), 404)
-#         db.delete_like(data)
-#         return flask.make_response(flask.jsonify({"like_deleted": data.__dict__}), 201)
-#     return flask.make_response(flask.jsonify({"error": "post not found"}), 404)
+
 @app.route("/post/<post_id>")
 def get_post_by_id(post_id):
     post=db.get_post_by_id(post_id)

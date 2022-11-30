@@ -1,3 +1,6 @@
+
+
+
 from __future__ import annotations
 
 import asyncio
@@ -59,7 +62,7 @@ class SQLExecutor:
     @staticmethod
     def _adding_quot(values, columns):
         values_ = []
-        columns_ = list(columns)
+        new_cols =[]
         for i, val in enumerate(values):
             if list == type(val):
                 val = json.dumps({"list": val})
@@ -68,13 +71,14 @@ class SQLExecutor:
             if val is None:
                 values_.append("null")
             elif val == "AUTO_INC_VALUE":
-                columns_.pop(i)
+
                 continue
 
             else:
                 values_.append("\'" + str(val) + "\'")
-
-        return columns_, values_
+            new_cols.append(columns[i])
+            print(new_cols,values_)
+        return new_cols, values_
 
     def _packing_query(self) -> Sequence:
         ...
@@ -126,6 +130,7 @@ class SQLExecutor:
 
     def execute_create_table(self, name: str, columns: tuple, primary, foreign_key: str = "", reference: tuple = None,
                              ondelete="", onupdate=""):
+
         if not primary:
             primary = ""
         else:
@@ -352,6 +357,14 @@ class SQLTypes:
         return f"INTEGER"
 
     @staticmethod
+    def image(max:int=100):
+        return f"VARBINARY({max})"
+
+    @staticmethod
+    def date():
+        return "timestamp DEFAULT CURRENT_TIMESTAMP"
+
+    @staticmethod
     def varchar(size: int, ):
         return f"VARCHAR({size})"
 
@@ -416,16 +429,23 @@ class SimpleSQL:
                      foreign_key: str = "",
                      reference: tuple = None,
                      ondelete="",onupdate=""):
-        self._executor.execute_create_table(table.__name__ if not isinstance(table, str) else table,
-                                            tuple([f"{obj} {type_}" for obj, type_ in data.__dict__.items()]),
-                                            primary_key, foreign_key=foreign_key, reference=reference,
-                                            ondelete=ondelete,onupdate=onupdate)
+        print(onupdate,ondelete,1)
+        if ondelete or onupdate:
+
+            self._executor.execute_create_table(table.__name__ if not isinstance(table, str) else table,
+                                                tuple([f"{obj} {type_}" for obj, type_ in data.__dict__.items()]),
+                                                primary_key, foreign_key, reference,
+                                                ondelete,onupdate)
+        else:
+            self._executor.execute_create_table(table.__name__ if not isinstance(table, str) else table,
+                                                tuple([f"{obj} {type_}" for obj, type_ in data.__dict__.items()]),
+                                                primary_key, foreign_key, reference,
+                                               )
         if auto_increment_value and not self._types._server_less:
             self._executor.execute_increment_value(table.__name__, auto_increment_value)
 
     def query_filters(self, table: type, filters: str, first: bool = False):
         result = self._executor.execute_select(table.__name__, condition=filters)
-        print("[ DATABASE] ",result )
         if not result:
             return None
         return [table(**item.__dict__) for item in result] if not first else table(**result[0].__dict__)
@@ -462,17 +482,16 @@ class SimpleSQL:
     def query_update_table(self, table, data,foreign_key = False):
         self._executor.execute_update_table(table.__name__, data,foreign_key)
 
-    def query_alter_table_forgkey(self,table,foreign_key,reference:tuple,ondelete="",onupdate=""):
+    def query_alter_table_forgkey(self, table, foreign_key, reference: tuple, ondelete="", onupdate=""):
         if ondelete:
             ondelete = " ON DELETE CASCADE"
         if onupdate:
-            onupdate =  " ON UPDATE CASCADE"
+            onupdate = " ON UPDATE CASCADE"
         print(f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES "
-             f"{reference[0]}({reference[1]}{ondelete}{onupdate});")
-        self._executor.execute\
+              f"{reference[0]}({reference[1]}{ondelete}{onupdate});")
+        self._executor.execute \
             (f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES "
              f"{reference[0]}({reference[1]}){ondelete}{onupdate};")
-
 
     def backup(self, filepath: str, diff: bool = False):
         if self._executor.db.database:
@@ -526,5 +545,3 @@ def connect(serverless=False, create_and_ignore=False, *args, **kwargs) -> SQLEx
         kwargs["create_and_ignore"] = create_and_ignore
         return SQLServer(*args, **kwargs)
     return SQLServer(*args, **kwargs)
-
-

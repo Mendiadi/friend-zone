@@ -414,17 +414,25 @@ class HomeWin(BasicWin):
             a.place(x=450, y=y)
             self.result_labels.append(a)
 
-    def my_profile(self):
+    def my_profile_onclick(self):
         self.move_to_user_page(self.app.user)
+
+    def logout_onclick(self):
+        if self.app.logout() == 1:
+            self.app.state = AppStates.LOGIN
+            self.app.update_content()
+
 
     def load(self):
 
         self.bg.place(x=0, y=0)
-        profile_btn = ComponentCreator.create_button(self.win, "My Profile", self.my_profile, "normal", size=(2, 10))
+        profile_btn = ComponentCreator.create_button(self.win, "My Profile", self.my_profile_onclick, "normal", size=(2, 10))
         profile_btn.config(border=0, font="none 12 bold", bg="deepskyblue3")
         profile_btn.place(x=650, y=70)
         self.explore_btn.place(x=300, y=70)
-
+        logout_btn = ComponentCreator.create_button(self.win,"logout",self.logout_onclick,"normal",size=(2,10))
+        logout_btn.config(border=0, font="none 12 bold", bg="deepskyblue3")
+        logout_btn.place(x=470,y=30)
         ComponentCreator.create_text_label(self.win, "Search for Users", "cyan", font_size=17).place(x=430, y=110)
         self.search_bar.place(x=370, y=150)
 
@@ -650,7 +658,7 @@ class App:
         from api_fecth import CreatePost, Post
         post = CreatePost(text)
         with api_fecth.PostsAPI(requests.session()) as session:
-            res = session.create_post(post, self.user)
+            res = session.create_post(post)
             if type(res) == Post:
 
                 return 1, res
@@ -687,6 +695,13 @@ class App:
             res = session.get_post_by_id(post_id)
             print(res)
         return res
+
+    @require_connection
+    def logout(self):
+        with api_fecth.UsersAPI(requests.session()) as session:
+            code_,res = session.logout()
+            print(res)
+        return code_
 
     @require_connection
     def login(self, email, password):

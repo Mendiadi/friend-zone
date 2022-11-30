@@ -80,13 +80,16 @@ class UsersAPI(API):
         res = self._session.get(self.base_url + f"/search/{query}")
         return [User(**user) for user in res.json()['users']]
 
+    def logout(self):
+        res = self._session.get(self.base_url + "/logout")
+        return (0, res.text) if not res.ok else (1, res.text)
 
 class PostsAPI(API):
     def __init__(self, session):
         super().__init__(session)
 
-    def create_post(self, post_data: CreatePost, user):
-        res = self._session.post(self.base_url + f"/{user}/post", json=post_data.to_json())
+    def create_post(self, post_data: CreatePost):
+        res = self._session.post(self.base_url + f"/post", json=post_data.to_json())
         if res.ok:
             return Post(**res.json())
         else:
@@ -141,9 +144,13 @@ class PostsAPI(API):
         res = self._session.get(self.base_url + f"/like/{email}")
         if res.ok:
             return [Like(**like) for like in res.json()['likes']]
-        return res.text
+        return res.text if not res.ok else 1
+
 
 
 if __name__ == '__main__':
-    with UsersAPI(requests.session()) as session:
-        print(session.search("4"))
+    s = requests.session()
+    with PostsAPI(s) as session:
+        with UsersAPI(s) as se:
+            se.login("adim333","12345")
+        print(session.create_post(CreatePost("asdfasdas")))
