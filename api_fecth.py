@@ -39,7 +39,7 @@ class User(Model):
 class API:
     def __init__(self, session: requests.Session):
         self._session = session
-        self.base_url = "http://172.18.96.1:5000"
+        self.base_url = "http://127.0.0.1:5000"
 
     def __enter__(self):
         return self
@@ -49,10 +49,12 @@ class API:
 
     def test_connection(self):
         try:
-            self._session.get(self.base_url)
+            conn = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            conn.connect(("localhost",5000))
             return 1
         except ConnectionError:
             return 0
+
 class UsersAPI(API):
     def __init__(self, session):
         super().__init__(session)
@@ -143,5 +145,5 @@ class PostsAPI(API):
 
 
 if __name__ == '__main__':
-    with PostsAPI(requests.session()) as session:
-        print(session.get_likes_by_email("adim333"))
+    with UsersAPI(requests.session()) as session:
+        print(session.search("4"))

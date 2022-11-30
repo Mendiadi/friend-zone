@@ -160,4 +160,4 @@ def get_like_by_email(user_email):
 
 if __name__ == '__main__':
 
-    app.run(debug=True,host=socket.gethostbyname(socket.gethostname()))
+    app.run(debug=True)

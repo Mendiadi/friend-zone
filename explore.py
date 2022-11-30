@@ -63,7 +63,7 @@ class ComponentCreator:
 
             def refresh(self, likes_count, app):
                 self.txt.config(text=self.post.text)
-                self.like_label.config(text="likes: " + str(likes_count), width=len(text) + 1)
+                self.like_label.config(text=f"likes: {likes_count}")
                 self.like_count = likes_count
                 if self.post.post_id not in [p.post_id for p in app.get_likes_by_email(app.user)]:
                     self.like_btn.config(text="like", )
@@ -72,19 +72,20 @@ class ComponentCreator:
                     self.like_btn.config(text="dislike")
                     self.like_btn.place_configure(x=450)
 
-        color_bg = "grey"
-        root.config(bg="cyan")
-        can = tk.Canvas(root, height=200, width=500, bg="red")
+        color_bg2 = "cyan"
+        color_bg = "deepskyblue3"
+        root.config(bg="deepskyblue")
+        can = tk.Canvas(root, height=200, width=500, bg=color_bg2)
         can2 = tk.Canvas(can, height=175, width=450, bg=color_bg)
-        label = tk.Label(can2, text=h1, font="none 20 bold", height=0, width=len(h1) + 1, bg="red")
+        label = tk.Label(can2, text=h1, font="none 20 bold", height=0, width=len(h1) + 1, bg=color_bg2)
         txt = tk.Label(can2, text=text, font="none 12", height=0, width=len(text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
-        like_btn = tk.Button(can, text="like", bg="red", command=lambda: wrap(0), border=0, font="none 10 bold")
+        like_btn = tk.Button(can, text="like", bg=color_bg2, command=lambda: wrap(0), border=0, font="none 10 bold")
         like_btn.place_configure(x=468, y=178)
-        print(post)
         like_count = tk.Label(can, text=f"likes: {like_count}",
-                              font="none 8", bg=color_bg, width=len(text) + 1)
-        like_count.place_configure(x=1, y=1)
+                              font="none 8", bg=color_bg2, width=len(f"likes: {like_count}") + 1)
+        like_count.place_configure(x=1, y=180)
+        print(post)
 
         def wrap(key):
             print(key)
@@ -97,11 +98,11 @@ class ComponentCreator:
                 func_like(post.post_id)
 
         if func_del:
-            btn = tk.Button(can, text="X", command=lambda: wrap(1), font="none 12 bold", bg="red", border=0
-                            , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
+            btn = tk.Button(can, text="X", command=lambda: wrap(1), font="none 12 bold", bg=color_bg2, border=0
+                            , activebackground="blue", highlightbackground="blue", highlightcolor="blue", fg="red")
             btn.place_configure(x=480, y=5)
         if func_edit:
-            btn = tk.Button(can, text="E", command=lambda: wrap(2), font="none 12 bold", bg="red", border=0
+            btn = tk.Button(can, text="E", command=lambda: wrap(2), font="none 12 bold", bg=color_bg2, border=0
                             , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
             btn.place_configure(x=480, y=40)
         label.place_configure(x=0, y=0)
@@ -277,16 +278,17 @@ class ExploreWin(PostViewWin):
         super().load()
         btn = tk.Button(self.second_frame, text="POST",
                         command=lambda: self.onclick(self.my_canvas, self.second_frame),
-                        bg="deepskyblue", border=0, font="none 15")
+                        bg="deepskyblue3", border=0, font="none 15")
 
         ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
         home_btn = ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page,
                                                   "normal", size=(2, 10))
-        home_btn.config(border=0, font="none 10 bold")
+
+        home_btn.config(border=0, font="none 10 bold", bg="deepskyblue3")
         home_btn.pack(pady=5)
         ref_btn = ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed,
                                                  "normal", size=(2, 10))
-        ref_btn.config(border=0, font="none 10 bold")
+        ref_btn.config(border=0, font="none 10 bold", bg="deepskyblue3")
 
         ref_btn.pack(pady=5)
         self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
@@ -298,9 +300,8 @@ class ExploreWin(PostViewWin):
     def onclick(self, c, root):
         # c means canvas to update scrollbar
         data = self.post_data.get()
-        self.add_post_entry.delete(0,tk.END)
+        self.add_post_entry.delete(0, tk.END)
         if not data:
-
             return
         code, post = self.app.create_post(data)
         if not code:
@@ -431,10 +432,13 @@ class HomeWin(BasicWin):
 class RegisterWin(BasicWin):
     def __init__(self, win, geometry, app):
         super(RegisterWin, self).__init__(win, geometry, app)
+        self.win.config(bg="cyan")
         self.register_btn = ComponentCreator.create_button(self.win, "Register",
                                                            self.register_btn_onclick, "normal", (5, 60))
         self.back_btn = ComponentCreator.create_button(self.win, "Back",
-                                                           self.back_to_login, "normal", (5, 60))
+                                                       self.back_to_login, "normal", (5, 60))
+        self.back_btn.config(border=0)
+        self.register_btn.config(border=0)
         self.email_var = tk.StringVar()
         self.password_var = tk.StringVar()
         self.re_password_var = tk.StringVar()
@@ -442,9 +446,18 @@ class RegisterWin(BasicWin):
         self.password_field = ComponentCreator.create_entry(self.win, self.password_var, hide=True)
         self.re_password_field = ComponentCreator.create_entry(self.win, self.re_password_var, hide=True)
         self.validate_job = None
-        self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
-        self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
-        self.re_pass_text = ComponentCreator.create_text_label(self.win, "Your Password Again:", color="light blue")
+        self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:",
+                                                             color="light blue", font_size=12)
+        self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:",
+                                                            color="light blue", font_size=12)
+        self.re_pass_text = ComponentCreator.create_text_label(self.win, "Your Password Again:",
+                                                               color="light blue", font_size=12)
+        self.email_field.config(border=0)
+        self.password_field.config(border=0)
+        self.re_password_field.config(border=0)
+        self.email_text.config(bg="cyan")
+        self.pass_text.config(bg="cyan")
+        self.re_pass_text.config(bg="cyan")
 
     def back_to_login(self):
         self.app.state = AppStates.LOGIN
@@ -477,8 +490,10 @@ class RegisterWin(BasicWin):
             self.validate_job = self.win.after(1, self.validate_input)
 
     def load(self):
-        pad = 10
-
+        pad = 15
+        a = ComponentCreator.create_text_label(self.win, "", fg_color="cyan")
+        a.config(border=0, bg="cyan", pady=50)
+        a.pack(pady=pad)
         self.email_text.pack(pady=pad)
         self.email_field.pack(pady=pad)
         self.pass_text.pack(pady=pad)
@@ -557,36 +572,49 @@ class LoginWin(BasicWin):
         self.pass_text.place(y=580, x=330)
         self.password_field.place(y=545, x=330)
         self.login_btn.place(y=680, x=290)
-
         self.validate_input()
 
 
+def require_connection(func):
+    def wrapper(*args, **kwargs):
+        try:
+            with api_fecth.API(requests.session()) as session:
+                res = session.test_connection()
+            if res == 0:
+                messagebox.showerror("no connection", "your connection is disabled")
+        except (ConnectionError):
+            return
+        res = func(*args, **kwargs)
+        return res
+
+    return wrapper
+
+
 class App:
+
     def __init__(self):
         self.state = AppStates.LOGIN
         self.win = tk.Tk()
+        self.win.title("MY FRIEND ZONE")
         self.user = None
         self.MAXSIZE = "1000x1000"
         self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
 
-    def test_connection(self):
-        with api_fecth.UsersAPI(requests.session()) as session:
-            res = session.test_connection()
-        if res == 0:
-            messagebox.showerror("no connection", "your connection is disabled")
-
+    @require_connection
     def search(self, query):
         with api_fecth.UsersAPI(requests.session()) as session:
             res = session.search(query)
         return res
 
+    @require_connection
     def edit_post(self, post):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.edit_post(post)
             print(res)
 
+    @require_connection
     def delete_post(self, post):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.delete_post(post)
@@ -595,6 +623,7 @@ class App:
                 return 1
             return 0
 
+    @require_connection
     def post_like(self, like):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.like_post(like)
@@ -603,6 +632,7 @@ class App:
             return 1
         return 0
 
+    @require_connection
     def register(self, email, password, re_password):
         if password != re_password:
             return 0
@@ -614,6 +644,7 @@ class App:
             return 0
         return 1
 
+    @require_connection
     def create_post(self, text):
         from api_fecth import CreatePost, Post
         post = CreatePost(text)
@@ -625,6 +656,7 @@ class App:
             else:
                 return 0, res
 
+    @require_connection
     def get_posts(self, email):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_posts_by_user(email)
@@ -634,24 +666,28 @@ class App:
                 print(res)
                 return []
 
+    @require_connection
     def get_all_posts(self):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_all_posts()
 
         return res
 
+    @require_connection
     def get_likes_by_post(self, post_id):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_likes_by_post(post_id)
 
         return res
 
+    @require_connection
     def get_post_by_id(self, post_id):
         with api_fecth.PostsAPI(requests.session()) as session:
             res = session.get_post_by_id(post_id)
             print(res)
         return res
 
+    @require_connection
     def login(self, email, password):
 
         # requests login
@@ -700,6 +736,7 @@ class App:
             raise Exception("we run for some errors right now...")
         self.switch_page(page)
 
+    @require_connection
     def get_likes_by_email(self, email):
 
         with api_fecth.PostsAPI(requests.session()) as session:
