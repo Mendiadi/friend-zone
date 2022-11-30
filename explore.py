@@ -49,10 +49,10 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, h1, text, func_del=None, func_edit=None, post=None, like_count=None, func_like=None):
+    def create_post_label(root, post, func_del=None, func_edit=None, like_count=None, func_like=None):
 
         class PostComponent:
-            def __init__(self, can, can2, label, txt, like_label, like_btn, post):
+            def __init__(self, can, can2, label, txt, like_label, like_btn, post, time_label):
                 self.can = can
                 self.can2 = can2
                 self.label = label
@@ -60,11 +60,13 @@ class ComponentCreator:
                 self.like_label = like_label
                 self.like_btn = like_btn
                 self.post = post
+                self.time_label = time_label
 
             def refresh(self, likes_count, app):
                 self.txt.config(text=self.post.text)
                 self.like_label.config(text=f"likes: {likes_count}")
                 self.like_count = likes_count
+                self.time_label.config(text=f"{self.post.time}")
                 if self.post.post_id not in [p.post_id for p in app.get_likes_by_email(app.user)]:
                     self.like_btn.config(text="like", )
                     self.like_btn.place_configure(x=468)
@@ -77,38 +79,35 @@ class ComponentCreator:
         root.config(bg="deepskyblue")
         can = tk.Canvas(root, height=200, width=500, bg=color_bg2)
         can2 = tk.Canvas(can, height=175, width=450, bg=color_bg)
-        label = tk.Label(can2, text=h1, font="none 20 bold", height=0, width=len(h1) + 1, bg=color_bg2)
-        txt = tk.Label(can2, text=text, font="none 12", height=0, width=len(text) + 1, bg=color_bg)
+        label = tk.Label(can2, text=post.user_email, font="none 20 bold", height=0,
+                         width=len(post.user_email) + 1, bg=color_bg2)
+        txt = tk.Label(can2, text=post.text, font="none 12", height=0,
+                       width=len(post.text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
-        like_btn = tk.Button(can, text="like", bg=color_bg2, command=lambda: wrap(0), border=0, font="none 10 bold")
+        like_btn = tk.Button(can, text="like", bg=color_bg2, command=lambda: func_like(post.post_id),
+                             border=0, font="none 10 bold")
         like_btn.place_configure(x=468, y=178)
+        time_label = tk.Label(can, text=f"{post.time}", width=len(post.time), bg=color_bg2,
+                              font="none 7")
+        time_label.place_configure(x=1, y=1)
         like_count = tk.Label(can, text=f"likes: {like_count}",
                               font="none 8", bg=color_bg2, width=len(f"likes: {like_count}") + 1)
+
         like_count.place_configure(x=1, y=180)
-        print(post)
-
-        def wrap(key):
-            print(key)
-            if key == 1:
-                func_del(post.post_id)
-            elif key == 2:
-                func_edit(post)
-            else:
-
-                func_like(post.post_id)
 
         if func_del:
-            btn = tk.Button(can, text="X", command=lambda: wrap(1), font="none 12 bold", bg=color_bg2, border=0
+            btn = tk.Button(can, text="X", command=lambda: func_del(post.post_id), font="none 12 bold", bg=color_bg2,
+                            border=0
                             , activebackground="blue", highlightbackground="blue", highlightcolor="blue", fg="red")
             btn.place_configure(x=480, y=5)
         if func_edit:
-            btn = tk.Button(can, text="E", command=lambda: wrap(2), font="none 12 bold", bg=color_bg2, border=0
+            btn = tk.Button(can, text="E", command=lambda: func_edit(post), font="none 12 bold", bg=color_bg2, border=0
                             , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
             btn.place_configure(x=480, y=40)
         label.place_configure(x=0, y=0)
         can2.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
-        label_post_created = PostComponent(can, can2, label, txt, like_count, like_btn, post)
+        label_post_created = PostComponent(can, can2, label, txt, like_count, like_btn, post, time_label)
 
         return label_post_created
 
@@ -126,8 +125,6 @@ class ComponentCreator:
                              highlightbackground="blue", bg="deepskyblue")
         return tk.Button(root, text=text, command=func, state=state,
                          highlightbackground="blue", height=size[0], width=size[1], bg="deepskyblue")
-
-
 
 
 class BasicWin:
@@ -193,7 +190,6 @@ class PostViewWin(ScrolledWin):
     def edit_post_onclick(self, post):
         pop_win = tk.Tk("edit")
         pop_win.geometry("300x300")
-
         e_entry = ComponentCreator.create_entry(pop_win, None)
 
         def edit_click(post_):
@@ -228,11 +224,12 @@ class PostViewWin(ScrolledWin):
             likes_count = self.app.get_likes_by_post(post)
 
             if p.user_email == self.app.user:
-                conf_label = self.delete_post_onclick, self.edit_post_onclick, p, likes_count
+                conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:
-                conf_label = (None, None, p, likes_count)
-            self.posts[post] = ComponentCreator.create_post_label(self.second_frame, p.user_email,
-                                                                  p.text, *conf_label, func_like=self.like_post_onclick)
+                conf_label = (None, None, likes_count)
+            self.posts[post] = ComponentCreator.create_post_label(self.second_frame,
+                                                                  p, *conf_label,
+                                                                  func_like=self.like_post_onclick)
             self.posts[post].refresh(likes_count, self.app)
             self.posts[post].can.pack()
 
@@ -249,11 +246,11 @@ class PostViewWin(ScrolledWin):
             if i > 25:
                 break
             if post.user_email == self.app.user:
-                conf_label = self.delete_post_onclick, self.edit_post_onclick, post, likes_count
+                conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:
-                conf_label = (None, None, post, likes_count)
+                conf_label = (None, None, likes_count)
             print(conf_label)
-            p = ComponentCreator.create_post_label(self.second_frame, post.user_email, post.text,
+            p = ComponentCreator.create_post_label(self.second_frame, post,
                                                    *conf_label, func_like=self.like_post_onclick)
             self.posts[post.post_id] = p
             self.posts[post.post_id].refresh(likes_count, self.app)
@@ -379,7 +376,6 @@ class HomeWin(BasicWin):
         super().kill()
         self.run = False
 
-
     def search_async(self):
         if self.search_query.get():
             self.fetch_results(self.app.search(self.search_query.get()))
@@ -425,23 +421,22 @@ class HomeWin(BasicWin):
         self.app.state = AppStates.EXPLORE
         self.app.update_content()
 
-
     def logout_onclick(self):
         if self.app.logout() == 1:
             self.app.state = AppStates.LOGIN
             self.app.update_content()
 
-
     def load(self):
 
         self.bg.place(x=0, y=0)
-        profile_btn = ComponentCreator.create_button(self.win, "My Profile", self.my_profile_onclick, "normal", size=(2, 10))
+        profile_btn = ComponentCreator.create_button(self.win, "My Profile", self.my_profile_onclick, "normal",
+                                                     size=(2, 10))
         profile_btn.config(border=0, font="none 12 bold", bg="deepskyblue3")
         profile_btn.place(x=650, y=70)
         self.explore_btn.place(x=300, y=70)
-        logout_btn = ComponentCreator.create_button(self.win,"logout",self.logout_onclick,"normal",size=(2,10))
+        logout_btn = ComponentCreator.create_button(self.win, "logout", self.logout_onclick, "normal", size=(2, 10))
         logout_btn.config(border=0, font="none 12 bold", bg="deepskyblue3")
-        logout_btn.place(x=470,y=30)
+        logout_btn.place(x=470, y=30)
         ComponentCreator.create_text_label(self.win, "Search for Users", "cyan", font_size=17).place(x=430, y=110)
         self.search_bar.place(x=370, y=150)
 
@@ -541,8 +536,8 @@ class LoginWin(BasicWin):
         self.email_field = ComponentCreator.create_entry(self.win, self.email_var)
         self.password_field = ComponentCreator.create_entry(self.win, self.password_var, hide=True)
         self.validate_job = None
-        self.email_text = ComponentCreator.create_text_label(self.win, "Your Email:", color="light blue")
-        self.pass_text = ComponentCreator.create_text_label(self.win, "Your Password:", color="light blue")
+        self.email_field.config(bg="deepskyblue2", borderwidth=0)
+        self.password_field.config(bg="deepskyblue2", borderwidth=0)
         self.register_btn = ComponentCreator.create_button(self.win, "sign up", self.sign_up_page, "normal", (5, 60))
         self.register_btn.config(border=0)
         self.error_plot = None
@@ -584,10 +579,10 @@ class LoginWin(BasicWin):
     def load(self):
         self.bg.place(y=0, x=0)
         self.register_btn.place(x=290, y=800)
-        self.email_text.place(y=480, x=330)
-        self.email_field.place(y=450, x=330)
-        self.pass_text.place(y=580, x=330)
-        self.password_field.place(y=545, x=330)
+
+        self.email_field.place(y=460, x=335)
+
+        self.password_field.place(y=552, x=335)
         self.login_btn.place(y=680, x=290)
         self.validate_input()
 
@@ -603,14 +598,14 @@ def require_connection(func):
         else:
             return func(*args, **kwargs)
 
-        return {"error":"no connection"}
+        return {"error": "no connection"}
 
     return wrapper
 
 
 class App:
 
-    def __init__(self,win):
+    def __init__(self, win):
         self.state = AppStates.LOGIN
         self.win = win
         self.win.title("MY FRIEND ZONE")
@@ -707,7 +702,6 @@ class App:
             print(res)
         return res
 
-
     @require_connection
     def get_likes_by_email(self, email):
 
@@ -715,11 +709,10 @@ class App:
             res = session.get_likes_by_email(email)
         return res
 
-
     @require_connection
     def logout(self):
         with api_fecth.UsersAPI(requests.session()) as session:
-            code_,res = session.logout()
+            code_, res = session.logout()
             print(res)
         return code_
 
@@ -776,5 +769,3 @@ def run_app():
     win = tk.Tk()
     App(win)
     win.mainloop()
-
-

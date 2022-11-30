@@ -22,7 +22,7 @@ class Post(Model):
     post_id: int
     text: str
     user_email: str
-
+    time:str
 
 @dataclasses.dataclass
 class Like(Model):
@@ -41,7 +41,7 @@ class User(Model):
 class API:
     def __init__(self, session: requests.Session):
         self._session = session
-        self.base_url = "http://127.0.0.1:5000"
+        self.base_url = "http://127.0.0.1:5000/api"
 
     def __enter__(self):
         return self
@@ -150,9 +150,24 @@ class PostsAPI(API):
 
 
 
-if __name__ == '__main__':
-    s = requests.session()
-    with PostsAPI(s) as session:
-        with UsersAPI(s) as se:
-            se.login("adim333","12345")
-        print(session.create_post(CreatePost("asdfasdas")))
+d = ("dorel1","swifter","theking","adi111","moshe22","taltal","progamer1")
+
+if __name__ == '__main__':...
+    # r = requests.session()
+    # papi = PostsAPI(r)
+    # uapi = UsersAPI(r)
+    # for d in d:
+        # uapi.register(d,"12345")
+        # uapi.login(d,"12345")
+        # papi.like_post(Like(d,123))
+        # for _ in range(3):
+        #     papi.create_post(CreatePost(f"my name is {d}"))
+    #     uapi.logout()
+    #
+    # uapi.__exit__(1,1,1)
+    # papi.__exit__(1,1,1)
+    # s = requests.session()
+    # with PostsAPI(s) as session:
+    #     with UsersAPI(s) as se:
+    #         se.login("adim333","12345")
+    #     print(session.create_post(CreatePost("asdfasdas")))

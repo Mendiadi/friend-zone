@@ -10,11 +10,11 @@ class user:
 
 
 class post:
-    def __init__(self, post_id, text, user_email):
+    def __init__(self, post_id, text, user_email,time):
         self.post_id = post_id
         self.text = text
         self.user_email = user_email
-
+        self.time = time
 
 class likes:
     def __init__(self, user_email, post_id):
@@ -43,11 +43,13 @@ class DataBase:
         with simpleSQL.connect(host=self.host, user=self.user,
                                password=self.password, database=self.database,
                                create_and_ignore=True) as db:
+
             user_table = user(db.types.column(db.types.varchar(50), nullable=False),
                               db.types.column(db.types.varchar(100), nullable=False))
             post_table = post(db.types.column(db.types.integer(), auto_increment=True),
                               db.types.column(db.types.text(long=True)),
-                              db.types.column(db.types.varchar(50), nullable=False))
+                              db.types.column(db.types.varchar(50), nullable=False),
+                              db.types.column(db.types.integer()))
             like_table = likes(db.types.column(db.types.varchar(50), nullable=False)
                                , db.types.column(db.types.integer(), nullable=False))
 
@@ -58,6 +60,7 @@ class DataBase:
                             ondelete=True)
             db.create_table(likes, like_table, foreign_key="post_id", reference=("post", "post_id")
                             , ondelete=True, onupdate=True)
+            db.update_column_to_date("post","time",default=True,on_update=True)
             db.query_alter_table_forgkey("likes", foreign_key="user_email", reference=("user", "email"),
                                          ondelete=True, onupdate=True)
 
@@ -208,7 +211,7 @@ class DataBase:
                 code = 0
 
             else:
-                db.query_update_table(post, data)
+                db.query_update_table(post, data,prime_indexes="time")
                 code = 1
                 db.commit()
         return code
