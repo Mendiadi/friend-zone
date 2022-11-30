@@ -128,6 +128,8 @@ class ComponentCreator:
                          highlightbackground="blue", height=size[0], width=size[1], bg="deepskyblue")
 
 
+
+
 class BasicWin:
     def __init__(self, win: tk.Tk, geometry, app):
         self.win = win
@@ -315,6 +317,8 @@ class LikesViewWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(LikesViewWin, self).__init__(win, geometry, app)
 
+    # ONCLICK METHODS ********************************************
+
     def on_back_click(self):
         self.app.state = AppStates.PROFILE
         self.app.update_content()
@@ -328,6 +332,8 @@ class LikesViewWin(PostViewWin):
 class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
+
+    # ONCLICK METHODS ********************************************
 
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
@@ -373,11 +379,8 @@ class HomeWin(BasicWin):
         super().kill()
         self.run = False
 
-    def explore_page_onclick(self):
-        self.app.state = AppStates.EXPLORE
-        self.app.update_content()
 
-    def search_onclick(self):
+    def search_async(self):
         if self.search_query.get():
             self.fetch_results(self.app.search(self.search_query.get()))
 
@@ -388,10 +391,9 @@ class HomeWin(BasicWin):
 
             if self.search_query.get() != temp:
                 temp = self.search_query.get()
-                self.search_onclick()
+                self.search_async()
 
     def move_to_user_page(self, email):
-        print("*****************move")
         self.app.state = AppStates.PROFILE
         self.app.temp_user_profile = email
         self.app.update_content()
@@ -414,8 +416,15 @@ class HomeWin(BasicWin):
             a.place(x=450, y=y)
             self.result_labels.append(a)
 
+    # ON CLICK METHODS *******************************************
+
     def my_profile_onclick(self):
         self.move_to_user_page(self.app.user)
+
+    def explore_page_onclick(self):
+        self.app.state = AppStates.EXPLORE
+        self.app.update_content()
+
 
     def logout_onclick(self):
         if self.app.logout() == 1:
@@ -601,15 +610,17 @@ def require_connection(func):
 
 class App:
 
-    def __init__(self):
+    def __init__(self,win):
         self.state = AppStates.LOGIN
-        self.win = tk.Tk()
+        self.win = win
         self.win.title("MY FRIEND ZONE")
         self.user = None
         self.MAXSIZE = "1000x1000"
         self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
+
+    # API CALLS METHODS *****************************************************
 
     @require_connection
     def search(self, query):
@@ -696,6 +707,15 @@ class App:
             print(res)
         return res
 
+
+    @require_connection
+    def get_likes_by_email(self, email):
+
+        with api_fecth.PostsAPI(requests.session()) as session:
+            res = session.get_likes_by_email(email)
+        return res
+
+
     @require_connection
     def logout(self):
         with api_fecth.UsersAPI(requests.session()) as session:
@@ -706,9 +726,6 @@ class App:
     @require_connection
     def login(self, email, password):
 
-        # requests login
-        # response 200 -> return ok
-        # response bad return not ok
         with api_fecth.UsersAPI(requests.session()) as session:
             res = session.login(email, password)
 
@@ -717,6 +734,8 @@ class App:
             self.user = email
             return 1
         return json.loads(res[0])
+
+    # UPDATE GUI METHODS *********************************************
 
     def update_content(self):
         threading.Thread(target=self.state_gui, daemon=True).start()
@@ -752,18 +771,10 @@ class App:
             raise Exception("we run for some errors right now...")
         self.switch_page(page)
 
-    @require_connection
-    def get_likes_by_email(self, email):
-
-        with api_fecth.PostsAPI(requests.session()) as session:
-            res = session.get_likes_by_email(email)
-        return res
-
 
 def run_app():
-    app = App()
-    app.root.mainloop()
+    win = tk.Tk()
+    App(win)
+    win.mainloop()
 
-if __name__ == '__main__':
-    app = App()
-    print(app.login("email", "pass"))
+
