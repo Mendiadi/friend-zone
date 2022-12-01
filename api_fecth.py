@@ -204,7 +204,7 @@ if __name__ == '__main__':
         print(session.create_post(CreatePost("hkli")))
     with PostsAPI(s) as session:
         with UsersAPI(s) as se:
-            se.login("adim333","12345")
+
             print(se.get_user_by_email("adim333"))
             print(se.get_user_by_id(1000))
             se.logout()
