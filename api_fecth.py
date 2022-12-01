@@ -172,6 +172,7 @@ class PostsAPI(API):
         return Post(**res.json()['post'])
 
     def get_likes_by_email(self, email):
+
         res = self._session.get(self.base_url + f"/like/{email}")
         if res.ok:
             return [Like(**like) for like in res.json()['likes']]

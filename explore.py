@@ -66,7 +66,7 @@ class ComponentCreator:
                 self.like_label.config(text=f"likes: {likes_count}")
                 self.like_count = likes_count
                 self.time_label.config(text=f"{self.post.time}")
-                if self.post.post_id not in [p.post_id for p in app.get_likes_by_email(app.user)]:
+                if self.post.post_id not in [p.post_id for p in app.get_likes_by_email(app.user.email)]:
                     self.like_btn.config(text="like", )
                     self.like_btn.place_configure(x=468)
                 else:
@@ -217,14 +217,14 @@ class PostViewWin(ScrolledWin):
 
         for post in self.posts.values():
             post.can.destroy()
-        posts = [like.post_id for like in self.app.get_likes_by_email(self.app.user)]
+        posts = [like.post_id for like in self.app.get_likes_by_email(self.app.user.email)]
         for post in posts:
 
             p = self.app.get_post_by_id(post)
             user_email = self.app.get_user_by_id(p.user_id).email
             likes_count = self.app.get_likes_by_post(post)
 
-            if user_email == self.app.user:
+            if user_email == self.app.user.email:
                 conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:
                 conf_label = (None, None, likes_count)
@@ -249,7 +249,7 @@ class PostViewWin(ScrolledWin):
             likes_count = self.app.get_likes_by_post(post.post_id)
             if i > 25:
                 break
-            if user_email == self.app.user:
+            if user_email == self.app.user.email:
                 conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:
                 conf_label = (None, None, likes_count)
@@ -348,14 +348,61 @@ class ProfileWin(PostViewWin):
         self.app.state = AppStates.LIKE_VIEW
         self.app.update_content()
 
+    def followers_view_onclick(self, flag):
+
+        if self.app.user.email != self.app.temp_user_profile:
+            user = self.app.get_user_by_email(self.app.temp_user_profile)
+        else:
+            user = self.app.user
+        if flag:
+            h1 = "view followers"
+            data = user.followers
+        else:
+            h1 = "view following"
+            data = user.following
+
+        pop_win = tk.Tk(h1)
+        pop_win.geometry("300x300")
+
+        def move_to_profile(email):
+            pop_win.destroy()
+
+            self.app.temp_user_profile = email
+            self.app.update_content(ignore_same_page=True)
+
+        for i, u in enumerate(data):
+            if i == 0:
+                continue
+            u = self.app.get_user_by_id(u)
+            print(u)
+            ComponentCreator.create_user_label(pop_win, u.email, move_to_profile).pack(pady=5)
+
     def load(self):
         super().load()
-        ComponentCreator.create_text_label(self.second_frame, f"{self.app.temp_user_profile} Profile").pack()
+        pad = 5
+        ComponentCreator.create_text_label(self.second_frame,
+                                           f"{self.app.temp_user_profile} Profile").pack(pady=pad)
+
         self.follow_btn = ComponentCreator.create_button(self.second_frame, "follow",
                                                          func=self.follow_user_onclick, state="normal")
-        if self.app.user != self.app.temp_user_profile:
+        user = self.app.get_user_by_email(self.app.temp_user_profile)
+        followers_btn = ComponentCreator.create_button(self.second_frame,
+                                                       f"followers: {len(user.followers) - 1}",
+                                                       lambda: self.followers_view_onclick(1)
+                                                       , "normal")
+        followers_btn.config(bg="cyan")
+        followers_btn.pack(pady=pad)
+        following_btn = ComponentCreator.create_button(self.second_frame,
+                                                       f"followings: {len(user.following) - 1}",
+                                                       lambda: self.followers_view_onclick(0)
+                                                       , "normal")
+        following_btn.config(bg="cyan")
+        following_btn.pack(pady=pad)
+
+        if self.app.user.email != user.email:
             self.follow_btn.pack()
-        if self.app.user == self.app.temp_user_profile:
+        else:
+
             ComponentCreator.create_button(
                 self.second_frame, "my likes", self.my_likes_onclick, "normal"
             ).pack()
@@ -427,7 +474,7 @@ class HomeWin(BasicWin):
     # ON CLICK METHODS *******************************************
 
     def my_profile_onclick(self):
-        self.move_to_user_page(self.app.user)
+        self.move_to_user_page(self.app.user.email)
 
     def explore_page_onclick(self):
         self.app.state = AppStates.EXPLORE
@@ -760,22 +807,23 @@ class App:
             res = session.login(email, password)
             print(f"[LOG] {res}")
         if res[1] == 200:
-            self.user = email
+            self.user = self.get_user_by_email(email)
             return 1
         return json.loads(res[0])
 
     # UPDATE GUI METHODS *********************************************
 
-    def update_content(self):
-        threading.Thread(target=self.state_gui, daemon=True).start()
+    def update_content(self, ignore_same_page=False):
+        threading.Thread(target=self.state_gui, args=(ignore_same_page,), daemon=True).start()
 
-    def switch_page(self, page: type):
-        if type(self.root) != page:
+    def switch_page(self, page: type, ignore_same_page=False):
+        if type(self.root) != page or ignore_same_page:
+            print("moshe was here")
             self.root.kill()
             self.root = page(self.win, self.MAXSIZE, self)
             self.root.load()
 
-    def state_gui(self):
+    def state_gui(self, ignore_same_page=False):
 
         if self.state == AppStates.EXPLORE:
             page = ExploreWin
@@ -798,7 +846,7 @@ class App:
             page = LikesViewWin
         else:
             raise Exception("we run for some errors right now...")
-        self.switch_page(page)
+        self.switch_page(page, ignore_same_page)
 
 
 def run_app():
