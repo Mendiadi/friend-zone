@@ -1,6 +1,3 @@
-
-
-
 from __future__ import annotations
 
 import asyncio
@@ -77,7 +74,7 @@ class SQLExecutor:
             else:
                 values_.append("\'" + str(val) + "\'")
             new_cols.append(columns[i])
-            print(new_cols,values_)
+
         return new_cols, values_
 
     def _packing_query(self) -> Sequence:
@@ -99,7 +96,7 @@ class SQLExecutor:
             first = ""
         else:
             first = "LIMIT 1"
-        print(f"{SQLCommand.select.value} {columns} FROM {table} {sorted_} {first} {condition};")
+
         self.execute(f"{SQLCommand.select.value} {columns} FROM {table} {sorted_} {condition} {first} ;")
 
         return self._packing_query()
@@ -146,7 +143,7 @@ class SQLExecutor:
         else:
             reference = ""
 
-        print(f"CREATE TABLE IF NOT EXISTS {name} ({str(',').join(columns)}{primary}{foreign_key}{reference});")
+
         self.execute(f"CREATE TABLE IF NOT EXISTS {name} ({str(',').join(columns)}{primary}{foreign_key}{reference});")
 
     def stop(self):
@@ -371,7 +368,7 @@ class SQLTypes:
     def varchar(size: int, ):
         return f"VARCHAR({size})"
 
-    def column(self, d_type, nullable: bool = True, auto_increment: bool = False):
+    def column(self, d_type, nullable: bool = True, auto_increment: bool = False,unique=False):
         if nullable:
             nullable = ""
         else:
@@ -384,8 +381,11 @@ class SQLTypes:
 
         else:
             auto_increment = ""
-
-        return f"{d_type}{nullable}{auto_increment}"
+        if unique:
+            unique = " UNIQUE"
+        else:
+            unique = ""
+        return f"{d_type}{nullable}{auto_increment}{unique}"
 
 
 class SimpleSQL:
@@ -439,7 +439,7 @@ class SimpleSQL:
                      foreign_key: str = "",
                      reference: tuple = None,
                      ondelete="",onupdate=""):
-        print(onupdate,ondelete,1)
+
         if ondelete or onupdate:
 
             self._executor.execute_create_table(table.__name__ if not isinstance(table, str) else table,
@@ -499,8 +499,6 @@ class SimpleSQL:
             ondelete = " ON DELETE CASCADE"
         if onupdate:
             onupdate = " ON UPDATE CASCADE"
-        print(f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES "
-              f"{reference[0]}({reference[1]}{ondelete}{onupdate});")
         self._executor.execute \
             (f"ALTER TABLE {table} ADD FOREIGN KEY ({foreign_key}) REFERENCES "
              f"{reference[0]}({reference[1]}){ondelete}{onupdate};")

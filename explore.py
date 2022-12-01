@@ -1,4 +1,3 @@
-import dataclasses
 import enum
 import json
 import threading
@@ -49,7 +48,7 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, post, func_del=None, func_edit=None, like_count=None, func_like=None):
+    def create_post_label(root, post,user_email, func_del=None, func_edit=None, like_count=None, func_like=None):
 
         class PostComponent:
             def __init__(self, can, can2, label, txt, like_label, like_btn, post, time_label):
@@ -79,8 +78,8 @@ class ComponentCreator:
         root.config(bg="deepskyblue")
         can = tk.Canvas(root, height=200, width=500, bg=color_bg2)
         can2 = tk.Canvas(can, height=175, width=450, bg=color_bg)
-        label = tk.Label(can2, text=post.user_email, font="none 20 bold", height=0,
-                         width=len(post.user_email) + 1, bg=color_bg2)
+        label = tk.Label(can2, text=user_email, font="none 20 bold", height=0,
+                         width=len(user_email) + 1, bg=color_bg2)
         txt = tk.Label(can2, text=post.text, font="none 12", height=0,
                        width=len(post.text) + 1, bg=color_bg)
         txt.place_configure(x=100, y=100)
@@ -181,8 +180,7 @@ class PostViewWin(ScrolledWin):
         self.posts = OrderedDict()
 
     def like_post_onclick(self, post_id):
-
-        like = api_fecth.Like(self.app.user, post_id)
+        like = api_fecth.CreateLike(post_id)
         self.app.post_like(like)
 
         self.fecth_post(post_id)
@@ -204,7 +202,7 @@ class PostViewWin(ScrolledWin):
         ComponentCreator.create_button(pop_win, "edit", lambda: edit_click(post), "normal").pack(pady=10)
 
     def delete_post_onclick(self, post_id):
-        print(post_id)
+
         if self.app.delete_post(post_id):
             from_all = True if self.app.state == AppStates.EXPLORE else False
             self.fetch_all_posts(from_all)
@@ -216,20 +214,25 @@ class PostViewWin(ScrolledWin):
         self.posts[post.post_id].refresh(likes_count, self.app)
 
     def fetch_liked_posts(self):
+
         for post in self.posts.values():
             post.can.destroy()
         posts = [like.post_id for like in self.app.get_likes_by_email(self.app.user)]
         for post in posts:
+
             p = self.app.get_post_by_id(post)
+            user_email = self.app.get_user_by_id(p.user_id).email
             likes_count = self.app.get_likes_by_post(post)
 
-            if p.user_email == self.app.user:
+            if user_email == self.app.user:
                 conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:
                 conf_label = (None, None, likes_count)
-            self.posts[post] = ComponentCreator.create_post_label(self.second_frame,
-                                                                  p, *conf_label,
-                                                                  func_like=self.like_post_onclick)
+            self.posts[post] = ComponentCreator.create_post_label(
+                self.second_frame,p,
+                user_email, *conf_label,
+                 func_like=self.like_post_onclick
+            )
             self.posts[post].refresh(likes_count, self.app)
             self.posts[post].can.pack()
 
@@ -240,17 +243,19 @@ class PostViewWin(ScrolledWin):
             post.can.destroy()
         self.posts.clear()
         posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
-        print(posts)
+
         for i, post in enumerate(posts):
+            user_email = self.app.get_user_by_id(post.user_id).email
             likes_count = self.app.get_likes_by_post(post.post_id)
             if i > 25:
                 break
-            if post.user_email == self.app.user:
+            if user_email == self.app.user:
                 conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:
                 conf_label = (None, None, likes_count)
-            print(conf_label)
+
             p = ComponentCreator.create_post_label(self.second_frame, post,
+                                                   user_email,
                                                    *conf_label, func_like=self.like_post_onclick)
             self.posts[post.post_id] = p
             self.posts[post.post_id].refresh(likes_count, self.app)
@@ -399,7 +404,7 @@ class HomeWin(BasicWin):
             l.destroy()
 
     def fetch_results(self, res):
-        print(res)
+
         self.clear_results()
         self.result_labels.clear()
         for i, u in enumerate(res):
@@ -487,7 +492,7 @@ class RegisterWin(BasicWin):
 
         else:
             # show error
-            print(response)
+
             self.password_field.delete(0, tk.END)
             self.re_password_field.delete(0, tk.END)
 
@@ -563,7 +568,7 @@ class LoginWin(BasicWin):
 
         else:
             # show error
-            print(response, type(response))
+
             self.plot_error(response)
 
             self.password_field.delete(0, tk.END)
@@ -614,35 +619,36 @@ class App:
         self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
-
+        self.session = requests.session()
     # API CALLS METHODS *****************************************************
 
     @require_connection
     def search(self, query):
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.UsersAPI(self.session) as session:
             res = session.search(query)
+            print(f"[LOG] {res}")
         return res
 
     @require_connection
     def edit_post(self, post):
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.edit_post(post)
-            print(res)
+            print(f"[LOG] {res}")
 
     @require_connection
     def delete_post(self, post):
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.delete_post(post)
-            print(res[0])
+            print(f"[LOG] {res}")
             if res[1] == 200:
                 return 1
             return 0
 
     @require_connection
     def post_like(self, like):
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.like_post(like)
-            print(res[0])
+            print(f"[LOG] {res}")
         if res[1] == 201:
             return 1
         return 0
@@ -651,10 +657,10 @@ class App:
     def register(self, email, password, re_password):
         if password != re_password:
             return 0
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.UsersAPI(self.session) as session:
 
             res = session.register(email, password)
-            print(res)
+            print(f"[LOG] {res}")
         if type(res) == str:
             return 0
         return 1
@@ -663,8 +669,9 @@ class App:
     def create_post(self, text):
         from api_fecth import CreatePost, Post
         post = CreatePost(text)
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.create_post(post)
+            print(f"[LOG] {res}")
             if type(res) == Post:
 
                 return 1, res
@@ -672,58 +679,72 @@ class App:
                 return 0, res
 
     @require_connection
-    def get_posts(self, email):
-        with api_fecth.PostsAPI(requests.session()) as session:
-            res = session.get_posts_by_user(email)
+    def get_posts(self, user):
+        with api_fecth.PostsAPI(self.session) as session:
+            res = session.get_posts_by_user(user)
+            print(f"[LOG] {res}")
             if type(res) == list:
                 return res
             else:
-                print(res)
+
                 return []
 
     @require_connection
     def get_all_posts(self):
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.get_all_posts()
-
+            print(f"[LOG] {res}")
         return res
 
     @require_connection
     def get_likes_by_post(self, post_id):
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.get_likes_by_post(post_id)
-
+            print(f"[LOG] {res}")
         return res
 
     @require_connection
     def get_post_by_id(self, post_id):
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.get_post_by_id(post_id)
-            print(res)
+            print(f"[LOG] {res}")
         return res
 
     @require_connection
     def get_likes_by_email(self, email):
 
-        with api_fecth.PostsAPI(requests.session()) as session:
+        with api_fecth.PostsAPI(self.session) as session:
             res = session.get_likes_by_email(email)
+            print(f"[LOG] {res}")
         return res
 
     @require_connection
     def logout(self):
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.UsersAPI(self.session) as session:
             code_, res = session.logout()
-            print(res)
+            print(f"[LOG] {res}")
         return code_
+
+    @require_connection
+    def get_user_by_email(self, email):
+        with api_fecth.UsersAPI(self.session) as session:
+            user = session.get_user_by_id(email)
+        return user
+
+    @require_connection
+    def get_user_by_id(self,user_id):
+        with api_fecth.UsersAPI(self.session) as session:
+            user = session.get_user_by_id(user_id)
+        return user
 
     @require_connection
     def login(self, email, password):
 
-        with api_fecth.UsersAPI(requests.session()) as session:
+        with api_fecth.UsersAPI(self.session) as session:
             res = session.login(email, password)
-
+            print(f"[LOG] {res}")
         if res[1] == 200:
-            print(res)
+
             self.user = email
             return 1
         return json.loads(res[0])

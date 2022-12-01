@@ -31,5 +31,7 @@ class AppConfigure:
         return AppConfigure(db['host'],db['user'],db['password'],
                             db['database'],net['port'],net['host'],net['name'])
 
+app_config = AppConfigure.load()
+
 if __name__ == '__main__':
     print(AppConfigure.load())

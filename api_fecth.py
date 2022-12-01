@@ -1,7 +1,10 @@
 import dataclasses
 import socket
+import time
 
 import requests
+
+import configure
 
 
 
@@ -16,22 +19,30 @@ class Model:
 class CreatePost(Model):
     text: str
 
+@dataclasses.dataclass
+class CreateLike(Model):
+    post_id:int
 
 @dataclasses.dataclass
 class Post(Model):
     post_id: int
     text: str
-    user_email: str
+    user_id: str
     time:str
 
 @dataclasses.dataclass
 class Like(Model):
-    user_email: str
+    user_id: int
     post_id: int
 
+@dataclasses.dataclass
+class CreateUser(Model):
+    email:str
+    password:str
 
 @dataclasses.dataclass
 class User(Model):
+    user_id:int
     email: str
     password: str
     #todo list of following users
@@ -41,7 +52,8 @@ class User(Model):
 class API:
     def __init__(self, session: requests.Session):
         self._session = session
-        self.base_url = "http://127.0.0.1:5000/api"
+        url = f"{configure.app_config.net_host}:{configure.app_config.port}"
+        self.base_url = f"http://{url}/api"
 
     def __enter__(self):
         return self
@@ -62,23 +74,30 @@ class UsersAPI(API):
         super().__init__(session)
 
     def register(self, email, password):
-        user = User(email, password)
-        print(user)
+        user = CreateUser(email, password)
+
         res = self._session.post(self.base_url + "/register", json=user.to_json())
         if res.ok:
             return User(**res.json())
         return res.text
 
     def login(self, email, password):
-        user = User(email, password)
-        print(user)
+        user = CreateUser(email, password)
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
+
+    def get_user_by_email(self,email):
+        res = self._session.get(self.base_url + f"/user/{email}")
+        return User(**res.json()) if res.ok else res.text
+
+    def get_user_by_id(self,user_id):
+        res = self._session.get(self.base_url + f"/user/{user_id}")
+        return User(**res.json()) if res.ok else res.text
 
     def search(self, query):
         if query == "":
             query = " "
-        print(query)
+
         res = self._session.get(self.base_url + f"/search/{query}")
         return [User(**user) for user in res.json()['users']]
 
@@ -114,18 +133,18 @@ class PostsAPI(API):
         return res.text
 
     def edit_post(self, post: Post):
-        print(post)
+
         res = self._session.put(self.base_url + f"/post/edit/{post.post_id}", json=post.to_json())
         if res.ok:
             return Post(**res.json()['post'])
         return res.text
 
-    def like_post(self, like: Like):
+    def like_post(self, like: CreateLike):
         res = self._session.post(self.base_url + f"/post/like/{like.post_id}", json=like.to_json())
         return res.text, res.status_code
 
     def get_likes_by_post(self, post_id):
-        print(self.base_url + f"/post/like/{post_id}")
+
         res = self._session.get(self.base_url + f"/post/like/{post_id}")
         if not res.ok:
             return res.text
@@ -150,24 +169,45 @@ class PostsAPI(API):
 
 
 
-d = ("dorel1","swifter","theking","adi111","moshe22","taltal","progamer1")
 
-if __name__ == '__main__':...
+
+if __name__ == '__main__':
     # r = requests.session()
     # papi = PostsAPI(r)
     # uapi = UsersAPI(r)
     # for d in d:
-        # uapi.register(d,"12345")
-        # uapi.login(d,"12345")
-        # papi.like_post(Like(d,123))
-        # for _ in range(3):
-        #     papi.create_post(CreatePost(f"my name is {d}"))
+    #     uapi.register(d,"12345")
+    #     uapi.login(d,"12345")
+    #
+    #     for _ in range(3):
+    #         papi.create_post(CreatePost(f"my name is {d}"))
     #     uapi.logout()
     #
     # uapi.__exit__(1,1,1)
     # papi.__exit__(1,1,1)
-    # s = requests.session()
-    # with PostsAPI(s) as session:
-    #     with UsersAPI(s) as se:
-    #         se.login("adim333","12345")
-    #     print(session.create_post(CreatePost("asdfasdas")))
+    s = requests.session()
+    with PostsAPI(s) as session:
+        with UsersAPI(s) as se:
+            se.login("adim333","12345")
+            print(se.get_user_by_email("adim333"))
+            print(se.get_user_by_id(1000))
+        time.sleep(5)
+        print(session.like_post(CreateLike(1)))
+        print(session.create_post(CreatePost("hkli")))
+    with PostsAPI(s) as session:
+        with UsersAPI(s) as se:
+
+            print(se.get_user_by_email("adim333"))
+            print(se.get_user_by_id(1000))
+        time.sleep(5)
+        print(session.like_post(CreateLike(1)))
+        print(session.create_post(CreatePost("hkli")))
+    with PostsAPI(s) as session:
+        with UsersAPI(s) as se:
+            se.login("adim333","12345")
+            print(se.get_user_by_email("adim333"))
+            print(se.get_user_by_id(1000))
+            se.logout()
+        time.sleep(5)
+        print(session.like_post(CreateLike(1)))
+        print(session.create_post(CreatePost("hkli")))
