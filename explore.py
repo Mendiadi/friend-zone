@@ -1,5 +1,6 @@
 import enum
 import json
+import random
 import threading
 import time
 import tkinter as tk
@@ -239,16 +240,20 @@ class PostViewWin(ScrolledWin):
         self.update_win()
 
     def fetch_all_posts(self, from_all=False):
+        max_for_fetch = 10
         for post in self.posts.values():
             post.can.destroy()
         self.posts.clear()
         posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
-
+        random.shuffle(posts)
         for i, post in enumerate(posts):
+            if i >= max_for_fetch:
+                break
+            if post.user_id == self.app.user.user_id:
+                continue
             user_email = self.app.get_user_by_id(post.user_id).email
             likes_count = self.app.get_likes_by_post(post.post_id)
-            if i > 25:
-                break
+
             if user_email == self.app.user.email:
                 conf_label = self.delete_post_onclick, self.edit_post_onclick, likes_count
             else:

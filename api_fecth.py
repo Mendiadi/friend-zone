@@ -194,40 +194,41 @@ class Services:
 
 
 if __name__ == '__main__':
-    # r = requests.session()
-    # papi = PostsAPI(r)
-    # uapi = UsersAPI(r)
-    # for d in d:
-    #     uapi.register(d,"12345")
-    #     uapi.login(d,"12345")
-    #
-    #     for _ in range(3):
-    #         papi.create_post(CreatePost(f"my name is {d}"))
-    #     uapi.logout()
-    #
-    # uapi.__exit__(1,1,1)
-    # papi.__exit__(1,1,1)
-    s = requests.session()
-    with PostsAPI(s) as session:
-        with UsersAPI(s) as se:
-            se.login("adim333", "12345")
-            print(se.get_user_by_email("adim333"))
-            print(se.get_user_by_id(1000))
-        time.sleep(5)
-        print(session.like_post(CreateLike(1)))
-        print(session.create_post(CreatePost("hkli")))
-    with PostsAPI(s) as session:
-        with UsersAPI(s) as se:
-            print(se.get_user_by_email("adim333"))
-            print(se.get_user_by_id(1000))
-        time.sleep(5)
-        print(session.like_post(CreateLike(1)))
-        print(session.create_post(CreatePost("hkli")))
-    with PostsAPI(s) as session:
-        with UsersAPI(s) as se:
-            print(se.get_user_by_email("adim333"))
-            print(se.get_user_by_id(1000))
-            se.logout()
-        time.sleep(5)
-        print(session.like_post(CreateLike(1)))
-        print(session.create_post(CreatePost("hkli")))
+    d = ("taltal1","doron80","tamir445","gamer3")
+    r = requests.session()
+    papi = PostsAPI(r)
+    uapi = UsersAPI(r)
+    for d in d:
+        uapi.register(d,"12345")
+        uapi.login(d,"12345")
+
+        for _ in range(3):
+            papi.create_post(CreatePost(f"my name is {d}"))
+        uapi.logout()
+
+    uapi.__exit__(1,1,1)
+    papi.__exit__(1,1,1)
+    # s = requests.session()
+    # with PostsAPI(s) as session:
+    #     with UsersAPI(s) as se:
+    #         se.login("adim333", "12345")
+    #         print(se.get_user_by_email("adim333"))
+    #         print(se.get_user_by_id(1000))
+    #     time.sleep(5)
+    #     print(session.like_post(CreateLike(1)))
+    #     print(session.create_post(CreatePost("hkli")))
+    # with PostsAPI(s) as session:
+    #     with UsersAPI(s) as se:
+    #         print(se.get_user_by_email("adim333"))
+    #         print(se.get_user_by_id(1000))
+    #     time.sleep(5)
+    #     print(session.like_post(CreateLike(1)))
+    #     print(session.create_post(CreatePost("hkli")))
+    # with PostsAPI(s) as session:
+    #     with UsersAPI(s) as se:
+    #         print(se.get_user_by_email("adim333"))
+    #         print(se.get_user_by_id(1000))
+    #         se.logout()
+    #     time.sleep(5)
+    #     print(session.like_post(CreateLike(1)))
+    #     print(session.create_post(CreatePost("hkli")))
