@@ -199,13 +199,13 @@ def follow_user(user_id):
         c_user.following.append(u.user_id)
         db.update_user(c_user)
         db.update_user(u)
-        return flask.make_response(flask.jsonify({"follow": f"user {u.email} as followed by {c_user.email}"}), 200)
+        return flask.make_response(flask.jsonify({"follow": "followed"}), 200)
 
     u.followers.remove(c_user.user_id)
     c_user.following.remove(u.user_id)
     db.update_user(c_user)
     db.update_user(u)
-    return flask.make_response(flask.jsonify({"follow": f"user {u.email} as stopped follow {c_user.email}"}), 200)
+    return flask.make_response(flask.jsonify({"follow": "stop"}), 200)
 
 
 @app.route("/api/like/<user_email>")

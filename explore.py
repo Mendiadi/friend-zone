@@ -249,7 +249,7 @@ class PostViewWin(ScrolledWin):
         for i, post in enumerate(posts):
             if i >= max_for_fetch:
                 break
-            if post.user_id == self.app.user.user_id:
+            if post.user_id == self.app.user.user_id and from_all:
                 continue
             user_email = self.app.get_user_by_id(post.user_id).email
             likes_count = self.app.get_likes_by_post(post.post_id)
@@ -343,7 +343,12 @@ class ProfileWin(PostViewWin):
     # ONCLICK METHODS ********************************************
 
     def follow_user_onclick(self):
-        self.app.follow_user(self.app.temp_user_profile)
+        r = self.app.follow_user(self.app.temp_user_profile)
+        if "stop" != r['follow']:
+            self.follow_btn.config(text="unfollow")
+        else:
+            self.follow_btn.config(text="follow")
+
 
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
@@ -375,6 +380,7 @@ class ProfileWin(PostViewWin):
             self.app.temp_user_profile = email
             self.app.update_content(ignore_same_page=True)
 
+
         for i, u in enumerate(data):
             if i == 0:
                 continue
@@ -382,14 +388,16 @@ class ProfileWin(PostViewWin):
             print(u)
             ComponentCreator.create_user_label(pop_win, u.email, move_to_profile).pack(pady=5)
 
+
+
     def load(self):
         super().load()
+
         pad = 5
         ComponentCreator.create_text_label(self.second_frame,
                                            f"{self.app.temp_user_profile} Profile").pack(pady=pad)
 
-        self.follow_btn = ComponentCreator.create_button(self.second_frame, "follow",
-                                                         func=self.follow_user_onclick, state="normal")
+
         user = self.app.get_user_by_email(self.app.temp_user_profile)
         followers_btn = ComponentCreator.create_button(self.second_frame,
                                                        f"followers: {len(user.followers) - 1}",
@@ -401,6 +409,17 @@ class ProfileWin(PostViewWin):
                                                        f"followings: {len(user.following) - 1}",
                                                        lambda: self.followers_view_onclick(0)
                                                        , "normal")
+
+        self.app.user = self.app.get_user_by_id(self.app.user.user_id)
+        if self.app.get_user_by_email(self.app.temp_user_profile).user_id in \
+                self.app.user.following:
+
+            follow_btn_txt = "unfollow"
+        else:
+
+            follow_btn_txt = "follow"
+        self.follow_btn = ComponentCreator.create_button(self.second_frame, follow_btn_txt,
+                                                         func=self.follow_user_onclick, state="normal")
         following_btn.config(bg="cyan")
         following_btn.pack(pady=pad)
 
@@ -415,6 +434,7 @@ class ProfileWin(PostViewWin):
             self.second_frame, "Back", self.go_back_onclick, "normal"
         )
         back_btn.pack()
+
         self.fetch_all_posts()
 
 
@@ -823,7 +843,6 @@ class App:
 
     def switch_page(self, page: type, ignore_same_page=False):
         if type(self.root) != page or ignore_same_page:
-            print("moshe was here")
             self.root.kill()
             self.root = page(self.win, self.MAXSIZE, self)
             self.root.load()
