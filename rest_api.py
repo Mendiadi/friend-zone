@@ -15,15 +15,18 @@ login_manager = flask_login.LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
-
 db = database.DataBase.get(configure.app_config)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.get_user_by_id(user_id)
 
+
 @app.route("/")
 def index():
     return flask.jsonify({"connection": "ok"})
+
 
 @app.route("/api/user/<string:email>")
 def get_user_by_email(email):
@@ -31,6 +34,7 @@ def get_user_by_email(email):
     if u:
         return flask.make_response(flask.jsonify(u.__dict__), 200)
     return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
+
 
 @app.route("/api/user/<int:user_id>")
 def get_user_by_id(user_id):
@@ -42,7 +46,8 @@ def get_user_by_id(user_id):
 
 @app.route("/api/register", methods=["POST"])
 def register():
-    user_data = database.user(db.AUTO_INC(), **flask.request.json)
+    user_data = database.user(db.AUTO_INC(), flask.request.json['email'],
+                              flask.request.json['password'], [0], [0])
     hash = hashlib.md5(user_data.password.encode()).hexdigest()
     user_data.password = hash
     if db.add_user(user_data):
@@ -52,7 +57,8 @@ def register():
 
 @app.route("/api/login", methods=["POST"])
 def login():
-    user_data = database.user(db.AUTO_INC(),**flask.request.json)
+    user_data = database.user(db.AUTO_INC(), flask.request.json['email'],
+                              flask.request.json['password'], [0], [0])
     hash = hashlib.md5(user_data.password.encode()).hexdigest()
     user_from_db = db.get_user(user_data.email)
     if not user_from_db:
@@ -178,6 +184,28 @@ def get_like_by_post(post_id):
         return flask.make_response(flask.jsonify({"likes": [like__.__dict__
                                                             for like__ in like_], "count": len(like_)}), 201)
     return flask.make_response(flask.jsonify({"likes": [], "count": 0}), 201)
+
+
+@app.route("/api/user/follow/<int:user_id>", methods=["post"])
+@flask_login.login_required
+def follow_user(user_id):
+    u = db.get_user_by_id(user_id)
+    print(f"[LOGG] {u.followers}")
+    if not u:
+        return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
+    c_user = flask_login.current_user
+    if c_user.user_id not in u.followers:
+        u.followers.append(c_user.user_id)
+        c_user.following.append(u.user_id)
+        db.update_user(c_user)
+        db.update_user(u)
+        return flask.make_response(flask.jsonify({"follow": f"user {u.email} as followed by {c_user.email}"}), 200)
+
+    u.followers.remove(c_user.user_id)
+    c_user.following.remove(u.user_id)
+    db.update_user(c_user)
+    db.update_user(u)
+    return flask.make_response(flask.jsonify({"follow": f"user {u.email} as stopped follow {c_user.email}"}), 200)
 
 
 @app.route("/api/like/<user_email>")

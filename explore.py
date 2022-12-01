@@ -48,7 +48,7 @@ class ComponentCreator:
         return can
 
     @staticmethod
-    def create_post_label(root, post,user_email, func_del=None, func_edit=None, like_count=None, func_like=None):
+    def create_post_label(root, post, user_email, func_del=None, func_edit=None, like_count=None, func_like=None):
 
         class PostComponent:
             def __init__(self, can, can2, label, txt, like_label, like_btn, post, time_label):
@@ -229,9 +229,9 @@ class PostViewWin(ScrolledWin):
             else:
                 conf_label = (None, None, likes_count)
             self.posts[post] = ComponentCreator.create_post_label(
-                self.second_frame,p,
+                self.second_frame, p,
                 user_email, *conf_label,
-                 func_like=self.like_post_onclick
+                func_like=self.like_post_onclick
             )
             self.posts[post].refresh(likes_count, self.app)
             self.posts[post].can.pack()
@@ -337,6 +337,9 @@ class ProfileWin(PostViewWin):
 
     # ONCLICK METHODS ********************************************
 
+    def follow_user_onclick(self):
+        self.app.follow_user(self.app.temp_user_profile)
+
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
         self.app.update_content()
@@ -348,6 +351,10 @@ class ProfileWin(PostViewWin):
     def load(self):
         super().load()
         ComponentCreator.create_text_label(self.second_frame, f"{self.app.temp_user_profile} Profile").pack()
+        self.follow_btn = ComponentCreator.create_button(self.second_frame, "follow",
+                                                         func=self.follow_user_onclick, state="normal")
+        if self.app.user != self.app.temp_user_profile:
+            self.follow_btn.pack()
         if self.app.user == self.app.temp_user_profile:
             ComponentCreator.create_button(
                 self.second_frame, "my likes", self.my_likes_onclick, "normal"
@@ -619,25 +626,34 @@ class App:
         self.root = LoginWin(self.win, self.MAXSIZE, self)
         self.root.load()
         self.temp_user_profile = None
-        self.session = requests.session()
+        session = requests.session()
+        self.api_fetch = api_fecth.Services(session)
+
     # API CALLS METHODS *****************************************************
 
     @require_connection
     def search(self, query):
-        with api_fecth.UsersAPI(self.session) as session:
+        with self.api_fetch.users_api as session:
             res = session.search(query)
             print(f"[LOG] {res}")
         return res
 
     @require_connection
+    def follow_user(self, email):
+        with self.api_fetch.users_api as session:
+            res = session.follow_user(email)
+            print(res)
+        return res
+
+    @require_connection
     def edit_post(self, post):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.edit_post(post)
             print(f"[LOG] {res}")
 
     @require_connection
     def delete_post(self, post):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.delete_post(post)
             print(f"[LOG] {res}")
             if res[1] == 200:
@@ -646,7 +662,7 @@ class App:
 
     @require_connection
     def post_like(self, like):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.like_post(like)
             print(f"[LOG] {res}")
         if res[1] == 201:
@@ -657,7 +673,7 @@ class App:
     def register(self, email, password, re_password):
         if password != re_password:
             return 0
-        with api_fecth.UsersAPI(self.session) as session:
+        with self.api_fetch.users_api as session:
 
             res = session.register(email, password)
             print(f"[LOG] {res}")
@@ -669,7 +685,7 @@ class App:
     def create_post(self, text):
         from api_fecth import CreatePost, Post
         post = CreatePost(text)
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.create_post(post)
             print(f"[LOG] {res}")
             if type(res) == Post:
@@ -680,7 +696,7 @@ class App:
 
     @require_connection
     def get_posts(self, user):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.get_posts_by_user(user)
             print(f"[LOG] {res}")
             if type(res) == list:
@@ -691,21 +707,21 @@ class App:
 
     @require_connection
     def get_all_posts(self):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.get_all_posts()
             print(f"[LOG] {res}")
         return res
 
     @require_connection
     def get_likes_by_post(self, post_id):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.get_likes_by_post(post_id)
             print(f"[LOG] {res}")
         return res
 
     @require_connection
     def get_post_by_id(self, post_id):
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.get_post_by_id(post_id)
             print(f"[LOG] {res}")
         return res
@@ -713,38 +729,37 @@ class App:
     @require_connection
     def get_likes_by_email(self, email):
 
-        with api_fecth.PostsAPI(self.session) as session:
+        with self.api_fetch.posts_api as session:
             res = session.get_likes_by_email(email)
             print(f"[LOG] {res}")
         return res
 
     @require_connection
     def logout(self):
-        with api_fecth.UsersAPI(self.session) as session:
+        with self.api_fetch.users_api as session:
             code_, res = session.logout()
             print(f"[LOG] {res}")
         return code_
 
     @require_connection
     def get_user_by_email(self, email):
-        with api_fecth.UsersAPI(self.session) as session:
+        with self.api_fetch.users_api as session:
             user = session.get_user_by_id(email)
         return user
 
     @require_connection
-    def get_user_by_id(self,user_id):
-        with api_fecth.UsersAPI(self.session) as session:
+    def get_user_by_id(self, user_id):
+        with self.api_fetch.users_api as session:
             user = session.get_user_by_id(user_id)
         return user
 
     @require_connection
     def login(self, email, password):
 
-        with api_fecth.UsersAPI(self.session) as session:
+        with self.api_fetch.users_api as session:
             res = session.login(email, password)
             print(f"[LOG] {res}")
         if res[1] == 200:
-
             self.user = email
             return 1
         return json.loads(res[0])

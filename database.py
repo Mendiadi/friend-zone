@@ -4,14 +4,15 @@ import simpleSQL
 
 
 class user(flask_login.UserMixin):
-    def __init__(self, user_id, email, password):
+    def __init__(self, user_id, email, password, followers, following):
         self.user_id = user_id
         self.email = email
         self.password = password
+        self.followers = followers
+        self.following = following
 
     def get_id(self):
         return str(self.user_id)
-
 
 
 class post:
@@ -49,7 +50,9 @@ class DataBase:
                                create_and_ignore=True) as db:
             user_table = user(db.types.column(db.types.integer(), nullable=False, auto_increment=True),
                               db.types.column(db.types.varchar(50), nullable=False, unique=True),
-                              db.types.column(db.types.varchar(100), nullable=False))
+                              db.types.column(db.types.varchar(100), nullable=False),
+                              db.types.column(db.types.objType(1000), nullable=False),
+                              db.types.column(db.types.objType(1000), nullable=False))
             post_table = post(db.types.column(db.types.integer(), auto_increment=True),
                               db.types.column(db.types.text(50)),
                               db.types.column(db.types.integer(), nullable=False),
@@ -70,6 +73,14 @@ class DataBase:
             db.commit()
             self.AUTO_INC_ = db.AUTO_INC
             print(f"[LOG] init DATABASE done success...")
+
+    def update_user(self,user_):
+        with simpleSQL.connect(host=self.host, user=self.user,
+                               password=self.password, database=self.database,
+                               create_and_ignore=True) as db:
+            db.query_update_table(user,user_)
+            db.commit()
+
 
     def add_user(self, user_obj: user):
         with simpleSQL.connect(host=self.host, user=self.user,

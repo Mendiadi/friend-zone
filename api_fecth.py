@@ -7,8 +7,6 @@ import requests
 import configure
 
 
-
-
 class Model:
 
     def to_json(self):
@@ -19,34 +17,39 @@ class Model:
 class CreatePost(Model):
     text: str
 
+
 @dataclasses.dataclass
 class CreateLike(Model):
-    post_id:int
+    post_id: int
+
 
 @dataclasses.dataclass
 class Post(Model):
     post_id: int
     text: str
     user_id: str
-    time:str
+    time: str
+
 
 @dataclasses.dataclass
 class Like(Model):
     user_id: int
     post_id: int
 
+
 @dataclasses.dataclass
 class CreateUser(Model):
-    email:str
-    password:str
+    email: str
+    password: str
+
 
 @dataclasses.dataclass
 class User(Model):
-    user_id:int
+    user_id: int
     email: str
     password: str
-    #todo list of following users
-    #todo list of users followers
+    followers: list[int]
+    following: list[int]
 
 
 class API:
@@ -63,11 +66,12 @@ class API:
 
     def test_connection(self):
         try:
-            conn = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-            conn.connect(("localhost",5000))
+            conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            conn.connect(("localhost", 5000))
             return 1
         except ConnectionError:
             return 0
+
 
 class UsersAPI(API):
     def __init__(self, session):
@@ -86,11 +90,11 @@ class UsersAPI(API):
         res = self._session.post(self.base_url + "/login", json=user.to_json())
         return res.text, res.status_code
 
-    def get_user_by_email(self,email):
+    def get_user_by_email(self, email):
         res = self._session.get(self.base_url + f"/user/{email}")
         return User(**res.json()) if res.ok else res.text
 
-    def get_user_by_id(self,user_id):
+    def get_user_by_id(self, user_id):
         res = self._session.get(self.base_url + f"/user/{user_id}")
         return User(**res.json()) if res.ok else res.text
 
@@ -101,9 +105,15 @@ class UsersAPI(API):
         res = self._session.get(self.base_url + f"/search/{query}")
         return [User(**user) for user in res.json()['users']]
 
+    def follow_user(self, email):
+        user = self.get_user_by_email(email)
+        res = self._session.post(self.base_url + f"/user/follow/{user.user_id}",data='{}')
+        return res.text if not res.ok else res.json()
+
     def logout(self):
         res = self._session.get(self.base_url + "/logout")
         return (0, res.text) if not res.ok else (1, res.text)
+
 
 class PostsAPI(API):
     def __init__(self, session):
@@ -168,7 +178,18 @@ class PostsAPI(API):
         return res.text if not res.ok else 1
 
 
+class Services:
+    def __init__(self, session):
+        self._users_api = UsersAPI(session)
+        self._posts_api = PostsAPI(session)
 
+    @property
+    def posts_api(self):
+        return self._posts_api
+
+    @property
+    def users_api(self):
+        return self._users_api
 
 
 if __name__ == '__main__':
@@ -188,7 +209,7 @@ if __name__ == '__main__':
     s = requests.session()
     with PostsAPI(s) as session:
         with UsersAPI(s) as se:
-            se.login("adim333","12345")
+            se.login("adim333", "12345")
             print(se.get_user_by_email("adim333"))
             print(se.get_user_by_id(1000))
         time.sleep(5)
@@ -196,7 +217,6 @@ if __name__ == '__main__':
         print(session.create_post(CreatePost("hkli")))
     with PostsAPI(s) as session:
         with UsersAPI(s) as se:
-
             print(se.get_user_by_email("adim333"))
             print(se.get_user_by_id(1000))
         time.sleep(5)
@@ -204,7 +224,6 @@ if __name__ == '__main__':
         print(session.create_post(CreatePost("hkli")))
     with PostsAPI(s) as session:
         with UsersAPI(s) as se:
-
             print(se.get_user_by_email("adim333"))
             print(se.get_user_by_id(1000))
             se.logout()
