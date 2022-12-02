@@ -1,7 +1,15 @@
 import dataclasses
 import json
+import yaml
+PATH_CONFIGURE = "app_config.yaml"
 
-PATH_CONFIGURE = "config_app.json"
+
+def parse_yaml(path: str) -> None:
+    with open(path, "r") as stream:
+        try:
+            return yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
 
 def load_json(path):
     try:
@@ -23,7 +31,7 @@ class AppConfigure:
 
     @staticmethod
     def load():
-        conf = load_json(PATH_CONFIGURE)
+        conf = parse_yaml(PATH_CONFIGURE)
         if not conf:
             return None
         db = conf['db']

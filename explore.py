@@ -339,7 +339,7 @@ class LikesViewWin(PostViewWin):
 class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
-
+        self.follow_btn = None
     # ONCLICK METHODS ********************************************
 
     def follow_user_onclick(self):

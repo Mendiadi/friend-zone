@@ -1,0 +1,22 @@
+
+# configuration for the app
+
+db:
+
+  host: # your db host url
+    "localhost"
+  user: # database user
+    "root"
+  password: # database password
+    "7874"
+  database: # database name
+    "fbclone"
+
+net:
+  port: # port to listen
+    5000
+  host: # url host
+    "127.0.0.1"
+  name: # app name
+    "fb_clone"
+
