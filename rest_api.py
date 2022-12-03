@@ -201,12 +201,14 @@ def follow_user(user_id):
         c_user.following.append(u.user_id)
         db.update_user(c_user)
         db.update_user(u)
+        print(f"{c_user} has follow {u}")
         return flask.make_response(flask.jsonify({"follow": "followed"}), 200)
 
     u.followers.remove(c_user.user_id)
     c_user.following.remove(u.user_id)
     db.update_user(c_user)
     db.update_user(u)
+    print(f"{c_user.email} has stop follow {u.email}")
     return flask.make_response(flask.jsonify({"follow": "stop"}), 200)
 
 

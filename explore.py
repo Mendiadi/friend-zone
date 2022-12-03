@@ -1,4 +1,3 @@
-import asyncio
 import enum
 import functools
 import json
@@ -65,7 +64,10 @@ class ComponentCreator:
                 self.time_label = time_label
 
             def refresh(self, likes_count, app):
-                self.txt.config(text=self.post.text)
+                self.txt.config(state="normal")
+                self.txt.delete(0.0, tk.END)
+                self.txt.insert(0.0, post.text)
+                self.txt.config(state="disabled", width=len(post.text), height=can2.winfo_height() - 10)
                 self.like_label.config(text=f"likes: {likes_count}")
                 self.like_count = likes_count
                 self.time_label.config(text=f"{self.post.time}")
@@ -83,9 +85,11 @@ class ComponentCreator:
         can2 = tk.Canvas(can, height=175, width=450, bg=color_bg)
         label = tk.Label(can2, text=user_email, font="none 20 bold", height=0,
                          width=len(user_email) + 1, bg=color_bg2)
-        txt = tk.Label(can2, text=post.text, font="none 12", height=0,
-                       width=len(post.text) + 1, bg=color_bg)
-        txt.place_configure(x=100, y=100)
+        txt = tk.Text(can2, font="none 12", bg=color_bg, border=0,
+                      width=len(post.text), height=can2.winfo_height() - 10)
+        txt.insert(0.0, post.text, tk.END)
+        txt.config(state="disabled")
+        txt.place_configure(x=50, y=50)
         like_btn = tk.Button(can, text="like", bg=color_bg2, command=lambda: func_like(post.post_id),
                              border=0, font="none 10 bold")
         like_btn.place_configure(x=468, y=178)
@@ -124,7 +128,7 @@ class ComponentCreator:
     def create_button(root, text, func, state, size=None, font="none 10 bold"):
         btn = tk.Button(root, text=text, command=func, state=state,
                         highlightbackground="blue",
-                        bg="deepskyblue3", border=0, font=font)
+                        bg="deepskyblue3", border=0, font=font, cursor="hand2")
         if size:
             btn.config(height=size[0], width=size[1])
         return btn
@@ -134,7 +138,7 @@ def loading_if_wait(func):
     @functools.wraps(func)
     def wrapper(self, *args):
         print(args)
-        t = threading.Thread(target=func, args=(self, *args))
+        t = threading.Thread(target=func, args=(self, *args), name="handle network")
         t.start()
         self.win.config(cursor="wait")
 
@@ -143,7 +147,7 @@ def loading_if_wait(func):
                 time.sleep(0.5)
             self.win.config(cursor="arrow")
 
-        threading.Thread(target=load).start()
+        threading.Thread(target=load, name="load thread").start()
 
     return wrapper
 
@@ -160,9 +164,6 @@ class BasicWin:
     def kill(self):
         for w in self.win.winfo_children():
             w.destroy()
-
-    def mainloop(self):
-        self.win.mainloop()
 
 
 class ScrolledWin(BasicWin):
@@ -208,15 +209,15 @@ class PostViewWin(ScrolledWin):
 
         self.fetch_post(post_id)
 
-
     def edit_post_onclick(self, post):
+
         pop_win = tk.Tk("edit")
         pop_win.geometry("300x300")
-        e_entry = ComponentCreator.create_entry(pop_win, None)
-
+        e_entry = tk.Text(pop_win, height=5)
+        e_entry.insert(0.0, post.text)
 
         def edit_click(post_):
-            post_.text = e_entry.get()
+            post_.text = e_entry.get(0.0, tk.END).strip()
 
             self.app.edit_post(post_)
 
@@ -230,7 +231,8 @@ class PostViewWin(ScrolledWin):
     def delete_post_onclick(self, post_id):
         print(post_id, "delete onclick")
         if self.app.delete_post(post_id):
-            self.fetch_all_posts(shuffled=False,show_current_user=True)
+            label = self.posts.pop(post_id)
+            label.can.destroy()
 
     def fetch_post(self, post_id):
         post = self.app.get_post_by_id(post_id)
@@ -264,12 +266,14 @@ class PostViewWin(ScrolledWin):
         self.update_win()
 
     def fetch_all_posts(self, from_all=False,
-                        max_for_fetch=10,shuffled=True,show_current_user=False):
+                        max_for_fetch=10, shuffled=True, show_current_user=False):
 
         for post in self.posts.values():
             post.can.destroy()
         self.posts.clear()
         posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
+        if "error" in posts:
+            return
         if shuffled:
             random.shuffle(posts)
         for i, post in enumerate(posts):
@@ -339,7 +343,7 @@ class ExploreWin(PostViewWin):
         print(f"post -> {post}")
         if not code:
             return
-        self.fetch_all_posts(from_all=True,shuffled=False,show_current_user=True)
+        self.fetch_all_posts(from_all=True, shuffled=False, show_current_user=True)
         self.update_win()
 
 
@@ -418,7 +422,7 @@ class ProfileWin(PostViewWin):
             user = self.app.get_user_by_email(self.app.temp_user_profile)
         else:
             self.is_my_profile = True
-            user = self.app.user
+            user = self.app.get_user_by_id(self.app.user.user_id)
 
         pad = 5
         ComponentCreator.create_text_label(self.second_frame,
@@ -437,18 +441,19 @@ class ProfileWin(PostViewWin):
                 follow_btn_txt = "unfollow"
             else:
                 follow_btn_txt = "follow"
-            follow = lambda: self.follow_user_onclick(user)
+
             self.follow_btn = ComponentCreator.create_button(self.second_frame, follow_btn_txt,
-                                                             func=follow, state="normal")
-            self.follow_btn.pack()
+                                                             func=lambda: self.follow_user_onclick(user),
+                                                             state="normal")
+            self.follow_btn.pack(pady=pad)
         else:
             ComponentCreator.create_button(
                 self.second_frame, "my likes", self.my_likes_onclick, "normal"
-            ).pack()
+            ).pack(pady=pad)
 
         ComponentCreator.create_button(
             self.second_frame, "Back", self.go_back_onclick, "normal"
-        ).pack()
+        ).pack(pady=pad)
 
         self.fetch_all_posts()
 
