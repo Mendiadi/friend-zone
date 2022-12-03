@@ -318,18 +318,20 @@ class ExploreWin(PostViewWin):
 
     @loading_if_wait
     def load(self):
-        super().load()
-
-        ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
-        ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page,
+        self.win.config(bg="cyan")
+        ComponentCreator.create_text_label(self.win, "Your Feed").pack(pady=5)
+        ComponentCreator.create_button(self.win, "HOME", self.move_to_home_page,
                                        "normal", size=(2, 10)).pack(pady=5)
-        ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed,
+        ComponentCreator.create_button(self.win, "refresh", self.refresh_feed,
                                        "normal", size=(2, 10)).pack(pady=5)
-        self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
+        self.add_post_entry = ComponentCreator.create_entry(self.win, self.post_data)
         self.add_post_entry.pack(pady=5)
-        ComponentCreator.create_button(self.second_frame,
+        ComponentCreator.create_button(self.win,
                                        text="POST", func=self.post_onclick,
                                        state="normal", font="none 15").pack(pady=10)
+        super().load()
+
+
 
         self.fetch_all_posts(from_all=True)
 
