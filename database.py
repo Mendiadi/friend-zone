@@ -28,6 +28,14 @@ class likes:
         self.user_id = user_id
         self.post_id = post_id
 
+class message:
+    def __init__(self,msg_id,sender,receiver,time,text):
+        self.msg_id = msg_id
+        self.sender = sender
+        self.receiver = receiver
+        self.time = time
+        self.text = text
+
 
 class DataBase:
 
@@ -62,6 +70,14 @@ class DataBase:
             like_table = likes(db.types.column(db.types.integer(), nullable=False)
                                , db.types.column(db.types.integer(), nullable=False))
 
+            message_table = message(db.types.column(db.types.integer(),nullable=False,auto_increment=True),
+                db.types.column(db.types.varchar(50),nullable=False),
+                db.types.column(db.types.varchar(50), nullable=False),
+                db.types.column(db.types.integer()),
+                db.types.column(db.types.varchar(100),nullable=False)
+            )
+
+
             db.create_table(user, user_table, primary_key="user_id", auto_increment_value=1000)
             db.create_table(post, post_table,"post_id",
                             foreign_key="user_id", reference=("user", "user_id"),
@@ -71,7 +87,8 @@ class DataBase:
             db.update_column_to_date("post", "time", default=True, on_update=True)
             db.query_alter_table_forgkey("likes", foreign_key="user_id", reference=("user", "user_id"),
                                          ondelete=True, onupdate=True)
-
+            db.create_table(message,message_table,primary_key="msg_id")
+            db.update_column_to_date("message","time",True)
             db.commit()
             self.AUTO_INC_ = db.AUTO_INC
             print(f"[LOG] init DATABASE done success...")
@@ -192,6 +209,22 @@ class DataBase:
             post_ = db.query_filter_by(post, "post_id", post_id, first=True)
 
         return post_
+
+    def add_message(self,msg):
+        with simpleSQL.connect(**self._configure) as db:
+            db.insert_to(message,msg)
+            db.commit()
+        return msg
+
+    def get_messages(self):
+        with simpleSQL.connect(**self._configure) as db:
+            res = db.query_all(message)
+        return res
+
+    def get_messages_by_chat(self,user_a,user_b):
+        with simpleSQL.connect(**self._configure) as db:
+            res = db.query_filters(message,filters=f"sender = \"{user_a}\" and receiver = \"{user_b}\"")
+        return res
 
     def update_post(self, data, post_id):
         with simpleSQL.connect(**self._configure) as db:

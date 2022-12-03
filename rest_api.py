@@ -212,6 +212,7 @@ def follow_user(user_id):
     return flask.make_response(flask.jsonify({"follow": "stop"}), 200)
 
 
+
 @app.route("/api/like/<string:user_email>")
 @flask_login.login_required
 def get_like_by_email(user_email):
@@ -219,6 +220,28 @@ def get_like_by_email(user_email):
     if likes:
         return flask.make_response(flask.jsonify({"likes": [like.__dict__ for like in likes]}), 200)
     return flask.make_response(flask.jsonify({"likes": []}), 200)
+
+
+@app.route("/api/message/",methods=['POST'])
+def send_message():
+    msg = database.message(**flask.request.json)
+
+    if not db.get_user(msg.receiver):
+        return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
+    if flask_login.current_user.email != msg.sender:
+        return flask.make_response(flask.jsonify({"error": "you not logged in session"}), 400)
+    msg.time = db.AUTO_INC()
+    msg.msg_id = db.AUTO_INC()
+    msg = db.add_message(msg)
+
+    return flask.make_response(flask.jsonify({"message": msg.__dict__}), 200)
+
+@app.route("/api/message/<string:user_a>/<string:user_b>")
+def get_chat(user_a,user_b):
+    if db.get_user(user_a) and db.get_user(user_b):
+        chat = db.get_messages_by_chat(user_a,user_b)
+        return flask.make_response(flask.jsonify({"chat":[msg.__dict__ for msg in chat]}), 200)
+    return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
 
 
 if __name__ == '__main__':

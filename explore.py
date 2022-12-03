@@ -7,6 +7,7 @@ import time
 import tkinter as tk
 from collections import OrderedDict
 from tkinter import messagebox
+from tkinter.scrolledtext import ScrolledText
 import requests
 
 import api_fecth
@@ -18,6 +19,7 @@ def load_assets():
 
 
 class AppStates(enum.Enum):
+
     HOME = 0
     LOGIN = 1
     EXPLORE = 2
@@ -299,6 +301,33 @@ class PostViewWin(ScrolledWin):
 
         self.update_win()
 
+class ChatWin(BasicWin):
+    def __init__(self, win, geometry, app):
+        super(ChatWin, self).__init__(win, geometry, app)
+        self.text_box = ScrolledText(self.win,width=100,height=20,state="disabled")
+        self.text_entry = ComponentCreator.create_entry(self.win,None)
+
+    def send_message_onclick(self):
+        self.app.send_message(self.app.temp_user_profile,self.text_entry.get())
+        self.load_messages()
+        self.text_entry.delete(0,tk.END)
+
+    def load_messages(self):
+        self.text_box.config(state="normal")
+        msg_data = self.app.get_chat(self.app.user.email, self.app.temp_user_profile)
+        only_text = [msg.text for msg in msg_data]
+        print(msg_data)
+        self.text_box.delete(0.0, tk.END)
+        self.text_box.insert(0.0, "\n".join(only_text))
+        self.text_box.config(state="disabled")
+
+    def load(self):
+        ComponentCreator.create_text_label(self.win,"Chat Room",font_size=15).pack()
+        self.load_messages()
+        self.text_box.pack()
+        self.text_entry.pack()
+        ComponentCreator.create_button(self.win,"Send",self.send_message_onclick,state="normal").pack()
+
 
 class ExploreWin(PostViewWin):
 
@@ -382,6 +411,12 @@ class ProfileWin(PostViewWin):
         else:
             self.follow_btn.config(text="follow")
 
+    def message_room_onclick(self):
+        root = tk.Tk()
+        chat = ChatWin(root,"500x500",self.app)
+        chat.load()
+
+        root.mainloop()
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
         self.app.update_content()
@@ -417,8 +452,7 @@ class ProfileWin(PostViewWin):
 
     @loading_if_wait
     def load(self):
-        super().load()
-
+        self.win.config(bg="cyan")
         if self.app.user.email != self.app.temp_user_profile:
 
             user = self.app.get_user_by_email(self.app.temp_user_profile)
@@ -427,14 +461,14 @@ class ProfileWin(PostViewWin):
             user = self.app.get_user_by_id(self.app.user.user_id)
 
         pad = 5
-        ComponentCreator.create_text_label(self.second_frame,
+        ComponentCreator.create_text_label(self.win,
                                            f"{self.app.temp_user_profile} Profile").pack(pady=pad)
 
-        ComponentCreator.create_button(self.second_frame,
+        ComponentCreator.create_button(self.win,
                                        f"FOLLOWERS {len(user.followers) - 1}",
                                        lambda: self.followers_view_onclick(1, user)
                                        , "normal").pack(pady=pad)
-        ComponentCreator.create_button(self.second_frame,
+        ComponentCreator.create_button(self.win,
                                        f"FOLLOWING {len(user.following) - 1}",
                                        lambda: self.followers_view_onclick(0, user)
                                        , "normal").pack(pady=pad)
@@ -444,19 +478,23 @@ class ProfileWin(PostViewWin):
             else:
                 follow_btn_txt = "follow"
 
-            self.follow_btn = ComponentCreator.create_button(self.second_frame, follow_btn_txt,
+            self.follow_btn = ComponentCreator.create_button(self.win, follow_btn_txt,
                                                              func=lambda: self.follow_user_onclick(user),
                                                              state="normal")
             self.follow_btn.pack(pady=pad)
+            ComponentCreator.create_button(
+                self.win, "send_message", self.message_room_onclick, "normal"
+            ).pack(pady=pad)
         else:
             ComponentCreator.create_button(
-                self.second_frame, "my likes", self.my_likes_onclick, "normal"
+                self.win, "my likes", self.my_likes_onclick, "normal"
             ).pack(pady=pad)
 
         ComponentCreator.create_button(
-            self.second_frame, "Back", self.go_back_onclick, "normal"
+            self.win, "Back", self.go_back_onclick, "normal"
         ).pack(pady=pad)
 
+        super().load()
         self.fetch_all_posts()
 
 
@@ -728,6 +766,20 @@ class App:
     # API CALLS METHODS *****************************************************
 
     @require_connection
+    def get_chat(self,user_a,user_b):
+        with self.api_fetch.users_api as session:
+            res = session.get_messages_by_chat(user_a,user_b)
+        return res
+
+    @require_connection
+    def send_message(self,receiver,text):
+        with self.api_fetch.users_api as session:
+            res = session.send_message(api_fecth.Message(None,self.user.email,
+                                                   receiver,None,text))
+            print(res)
+
+
+    @require_connection
     def search(self, query):
         with self.api_fetch.users_api as session:
             res = session.search(query)
@@ -895,6 +947,7 @@ class App:
             page = ProfileWin
         elif self.state == AppStates.LIKE_VIEW:
             page = LikesViewWin
+
         else:
             raise
         self.switch_page(page, ignore_same_page)

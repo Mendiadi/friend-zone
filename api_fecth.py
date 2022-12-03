@@ -51,6 +51,13 @@ class User(Model):
     followers: list[int]
     following: list[int]
 
+@dataclasses.dataclass
+class Message(Model):
+    msg_id:int
+    sender:str
+    receiver:str
+    time:str
+    text:str
 
 class API:
     def __init__(self, session: requests.Session):
@@ -122,6 +129,19 @@ class UsersAPI(API):
     def logout(self):
         res = self._session.get(self.base_url + "/logout")
         return (0, res.text) if not res.ok else (1, res.text)
+
+    def send_message(self,msg):
+        res = self._session.post(self.base_url + "/message",json=msg.to_json())
+        return res
+
+    def get_messages_by_chat(self,user_a,user_b):
+        res = self._session.get(self.base_url + f"/message/{user_a}/{user_b}")
+        if res.ok:
+            msgs = []
+            for msg in res.json()['chat']:
+                msgs.append(Message(**msg))
+            return msgs
+        return []
 
 
 class PostsAPI(API):
