@@ -65,13 +65,22 @@ class API:
         self._session.close()
 
     def test_connection(self):
+        print("test connection begin..",end=" -> ")
+        return_code:int
         try:
+            print("try to connect...",end=" -> ")
             conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             conn.connect(("localhost", 5000))
-            return 1
         except ConnectionError:
-            return 0
-
+            print("connection failed...",end=" -> ")
+            return_code = 0
+        else:
+            print("connection success... -> close connection testing",end=" -> ")
+            conn.close()
+            return_code = 1
+        finally:
+            print(f"done test connection with code {return_code}")
+            return return_code
 
 class UsersAPI(API):
     def __init__(self, session):
@@ -193,42 +202,3 @@ class Services:
         return self._users_api
 
 
-if __name__ == '__main__':
-    d = ("taltal1","doron80","tamir445","gamer3")
-    r = requests.session()
-    papi = PostsAPI(r)
-    uapi = UsersAPI(r)
-    for d in d:
-        uapi.register(d,"12345")
-        uapi.login(d,"12345")
-
-        for _ in range(3):
-            papi.create_post(CreatePost(f"my name is {d}"))
-        uapi.logout()
-
-    uapi.__exit__(1,1,1)
-    papi.__exit__(1,1,1)
-    # s = requests.session()
-    # with PostsAPI(s) as session:
-    #     with UsersAPI(s) as se:
-    #         se.login("adim333", "12345")
-    #         print(se.get_user_by_email("adim333"))
-    #         print(se.get_user_by_id(1000))
-    #     time.sleep(5)
-    #     print(session.like_post(CreateLike(1)))
-    #     print(session.create_post(CreatePost("hkli")))
-    # with PostsAPI(s) as session:
-    #     with UsersAPI(s) as se:
-    #         print(se.get_user_by_email("adim333"))
-    #         print(se.get_user_by_id(1000))
-    #     time.sleep(5)
-    #     print(session.like_post(CreateLike(1)))
-    #     print(session.create_post(CreatePost("hkli")))
-    # with PostsAPI(s) as session:
-    #     with UsersAPI(s) as se:
-    #         print(se.get_user_by_email("adim333"))
-    #         print(se.get_user_by_id(1000))
-    #         se.logout()
-    #     time.sleep(5)
-    #     print(session.like_post(CreateLike(1)))
-    #     print(session.create_post(CreatePost("hkli")))

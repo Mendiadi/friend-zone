@@ -1,4 +1,6 @@
+import asyncio
 import enum
+import functools
 import json
 import random
 import threading
@@ -119,12 +121,13 @@ class ComponentCreator:
         return tk.Entry(root, textvariable=text_var, font="none 20", bg="light blue", border=1, show=hide)
 
     @staticmethod
-    def create_button(root, text, func, state, size=None):
-        if not size:
-            return tk.Button(root, text=text, command=func, state=state,
-                             highlightbackground="blue", bg="deepskyblue")
-        return tk.Button(root, text=text, command=func, state=state,
-                         highlightbackground="blue", height=size[0], width=size[1], bg="deepskyblue")
+    def create_button(root, text, func, state, size=None,font="none 10 bold"):
+        btn = tk.Button(root, text=text, command=func, state=state,
+                         highlightbackground="blue",
+                        bg="deepskyblue3",border=0,font=font)
+        if size:
+            btn.config(height=size[0],width=size[1])
+        return btn
 
 
 class BasicWin:
@@ -184,7 +187,7 @@ class PostViewWin(ScrolledWin):
         like = api_fecth.CreateLike(post_id)
         self.app.post_like(like)
 
-        self.fecth_post(post_id)
+        self.fetch_post(post_id)
 
     def edit_post_onclick(self, post):
         pop_win = tk.Tk("edit")
@@ -195,8 +198,8 @@ class PostViewWin(ScrolledWin):
             post_.text = e_entry.get()
 
             self.app.edit_post(post_)
-            # from_all = True if self.app.state == AppStates.EXPLORE else False
-            self.fecth_post(post.post_id)
+
+            self.fetch_post(post.post_id)
             pop_win.destroy()
 
         e_entry.pack(pady=10)
@@ -208,7 +211,7 @@ class PostViewWin(ScrolledWin):
             from_all = True if self.app.state == AppStates.EXPLORE else False
             self.fetch_all_posts(from_all)
 
-    def fecth_post(self, post_id):
+    def fetch_post(self, post_id):
         post = self.app.get_post_by_id(post_id)
         likes_count = self.app.get_likes_by_post(post_id)
         self.posts[post.post_id].post = post
@@ -239,8 +242,8 @@ class PostViewWin(ScrolledWin):
 
         self.update_win()
 
-    def fetch_all_posts(self, from_all=False):
-        max_for_fetch = 10
+    def fetch_all_posts(self, from_all=False,max_for_fetch=10):
+
         for post in self.posts.values():
             post.can.destroy()
         self.posts.clear()
@@ -275,6 +278,7 @@ class ExploreWin(PostViewWin):
         super(ExploreWin, self).__init__(win, geometry, app)
         self.post_data = tk.StringVar()
         self.add_post_entry = None
+        self.post_btn = None
 
     def refresh_feed(self):
         self.fetch_all_posts(from_all=True)
@@ -285,29 +289,21 @@ class ExploreWin(PostViewWin):
 
     def load(self):
         super().load()
-        btn = tk.Button(self.second_frame, text="POST",
-                        command=lambda: self.onclick(self.my_canvas, self.second_frame),
-                        bg="deepskyblue3", border=0, font="none 15")
 
         ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
-        home_btn = ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page,
-                                                  "normal", size=(2, 10))
-
-        home_btn.config(border=0, font="none 10 bold", bg="deepskyblue3")
-        home_btn.pack(pady=5)
-        ref_btn = ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed,
-                                                 "normal", size=(2, 10))
-        ref_btn.config(border=0, font="none 10 bold", bg="deepskyblue3")
-
-        ref_btn.pack(pady=5)
+        ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page,
+                                                  "normal", size=(2, 10)).pack(pady=5)
+        ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed,
+                                                 "normal", size=(2, 10)).pack(pady=5)
         self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
         self.add_post_entry.pack(pady=5)
-        btn.pack(pady=10)
+        ComponentCreator.create_button(self.second_frame,
+                                       text="POST", func=self.post_onclick,
+                                       state="normal", font="none 15").pack(pady=10)
 
         self.fetch_all_posts(from_all=True)
 
-    def onclick(self, c, root):
-        # c means canvas to update scrollbar
+    def post_onclick(self):
         data = self.post_data.get()
         self.add_post_entry.delete(0, tk.END)
         if not data:
@@ -316,7 +312,6 @@ class ExploreWin(PostViewWin):
         if not code:
             return
         self.fetch_all_posts(from_all=True)
-
         self.update_win()
 
 
@@ -340,10 +335,12 @@ class ProfileWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(ProfileWin, self).__init__(win, geometry, app)
         self.follow_btn = None
+        self.is_my_profile = False
     # ONCLICK METHODS ********************************************
 
-    def follow_user_onclick(self):
-        r = self.app.follow_user(self.app.temp_user_profile)
+    def follow_user_onclick(self,user):
+
+        r = self.app.follow_user(user.email)
         if "stop" != r['follow']:
             self.follow_btn.config(text="unfollow")
         else:
@@ -358,12 +355,9 @@ class ProfileWin(PostViewWin):
         self.app.state = AppStates.LIKE_VIEW
         self.app.update_content()
 
-    def followers_view_onclick(self, flag):
+    def followers_view_onclick(self, flag,user):
+        # flag can be 1 or 0
 
-        if self.app.user.email != self.app.temp_user_profile:
-            user = self.app.get_user_by_email(self.app.temp_user_profile)
-        else:
-            user = self.app.user
         if flag:
             h1 = "view followers"
             data = user.followers
@@ -376,9 +370,9 @@ class ProfileWin(PostViewWin):
 
         def move_to_profile(email):
             pop_win.destroy()
-
             self.app.temp_user_profile = email
             self.app.update_content(ignore_same_page=True)
+
 
 
         for i, u in enumerate(data):
@@ -393,47 +387,44 @@ class ProfileWin(PostViewWin):
     def load(self):
         super().load()
 
+        if self.app.user.email != self.app.temp_user_profile:
+
+            user = self.app.get_user_by_email(self.app.temp_user_profile)
+        else:
+            self.is_my_profile = True
+            user = self.app.user
+
         pad = 5
         ComponentCreator.create_text_label(self.second_frame,
                                            f"{self.app.temp_user_profile} Profile").pack(pady=pad)
 
 
-        user = self.app.get_user_by_email(self.app.temp_user_profile)
-        followers_btn = ComponentCreator.create_button(self.second_frame,
-                                                       f"followers: {len(user.followers) - 1}",
-                                                       lambda: self.followers_view_onclick(1)
-                                                       , "normal")
-        followers_btn.config(bg="cyan")
-        followers_btn.pack(pady=pad)
-        following_btn = ComponentCreator.create_button(self.second_frame,
-                                                       f"followings: {len(user.following) - 1}",
-                                                       lambda: self.followers_view_onclick(0)
-                                                       , "normal")
 
-        self.app.user = self.app.get_user_by_id(self.app.user.user_id)
-        if self.app.get_user_by_email(self.app.temp_user_profile).user_id in \
-                self.app.user.following:
-
-            follow_btn_txt = "unfollow"
-        else:
-
-            follow_btn_txt = "follow"
-        self.follow_btn = ComponentCreator.create_button(self.second_frame, follow_btn_txt,
-                                                         func=self.follow_user_onclick, state="normal")
-        following_btn.config(bg="cyan")
-        following_btn.pack(pady=pad)
-
-        if self.app.user.email != user.email:
+        ComponentCreator.create_button(self.second_frame,
+                                                       f"FOLLOWERS {len(user.followers) - 1}",
+                                                       lambda: self.followers_view_onclick(1,user)
+                                                       , "normal").pack(pady=pad)
+        ComponentCreator.create_button(self.second_frame,
+                                                       f"FOLLOWING {len(user.following) - 1}",
+                                                       lambda: self.followers_view_onclick(0,user)
+                                                       , "normal").pack(pady=pad)
+        if not self.is_my_profile:
+            if self.app.user.user_id in user.followers:
+                follow_btn_txt = "unfollow"
+            else:
+                follow_btn_txt = "follow"
+            follow = lambda : self.follow_user_onclick(user)
+            self.follow_btn = ComponentCreator.create_button(self.second_frame, follow_btn_txt,
+                                            func=follow, state="normal")
             self.follow_btn.pack()
         else:
-
             ComponentCreator.create_button(
                 self.second_frame, "my likes", self.my_likes_onclick, "normal"
             ).pack()
-        back_btn = ComponentCreator.create_button(
+
+        ComponentCreator.create_button(
             self.second_frame, "Back", self.go_back_onclick, "normal"
-        )
-        back_btn.pack()
+        ).pack()
 
         self.fetch_all_posts()
 
@@ -654,7 +645,7 @@ class LoginWin(BasicWin):
 
     def validate_input(self):
         if self.app.state == AppStates.LOGIN:
-            if len(self.email_var.get()) < 3 or len(self.password_var.get()) < 3:
+            if len(self.email_var.get()) <= 3 or len(self.password_var.get()) < 3:
                 self.login_btn.config(state="disabled")
             else:
                 self.login_btn.config(state="normal")
@@ -672,6 +663,7 @@ class LoginWin(BasicWin):
 
 
 def require_connection(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
 
         with api_fecth.API(requests.session()) as session:
@@ -782,7 +774,10 @@ class App:
         with self.api_fetch.posts_api as session:
             res = session.get_all_posts()
             print(f"[LOG] {res}")
-        return res
+        if type(res) == list:
+            return res
+        else:
+            return []
 
     @require_connection
     def get_likes_by_post(self, post_id):
@@ -869,7 +864,7 @@ class App:
         elif self.state == AppStates.LIKE_VIEW:
             page = LikesViewWin
         else:
-            raise Exception("we run for some errors right now...")
+            raise
         self.switch_page(page, ignore_same_page)
 
 
