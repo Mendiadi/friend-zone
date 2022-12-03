@@ -121,13 +121,31 @@ class ComponentCreator:
         return tk.Entry(root, textvariable=text_var, font="none 20", bg="light blue", border=1, show=hide)
 
     @staticmethod
-    def create_button(root, text, func, state, size=None,font="none 10 bold"):
+    def create_button(root, text, func, state, size=None, font="none 10 bold"):
         btn = tk.Button(root, text=text, command=func, state=state,
-                         highlightbackground="blue",
-                        bg="deepskyblue3",border=0,font=font)
+                        highlightbackground="blue",
+                        bg="deepskyblue3", border=0, font=font)
         if size:
-            btn.config(height=size[0],width=size[1])
+            btn.config(height=size[0], width=size[1])
         return btn
+
+
+def loading_if_wait(func):
+    @functools.wraps(func)
+    def wrapper(self, *args):
+        print(args)
+        t = threading.Thread(target=func, args=(self, *args))
+        t.start()
+        self.win.config(cursor="wait")
+
+        def load():
+            while t.is_alive():
+                time.sleep(0.5)
+            self.win.config(cursor="arrow")
+
+        threading.Thread(target=load).start()
+
+    return wrapper
 
 
 class BasicWin:
@@ -183,16 +201,19 @@ class PostViewWin(ScrolledWin):
         super(PostViewWin, self).__init__(win, geometry, app)
         self.posts = OrderedDict()
 
+    @loading_if_wait
     def like_post_onclick(self, post_id):
         like = api_fecth.CreateLike(post_id)
         self.app.post_like(like)
 
         self.fetch_post(post_id)
 
+
     def edit_post_onclick(self, post):
         pop_win = tk.Tk("edit")
         pop_win.geometry("300x300")
         e_entry = ComponentCreator.create_entry(pop_win, None)
+
 
         def edit_click(post_):
             post_.text = e_entry.get()
@@ -205,11 +226,11 @@ class PostViewWin(ScrolledWin):
         e_entry.pack(pady=10)
         ComponentCreator.create_button(pop_win, "edit", lambda: edit_click(post), "normal").pack(pady=10)
 
+    @loading_if_wait
     def delete_post_onclick(self, post_id):
-
+        print(post_id, "delete onclick")
         if self.app.delete_post(post_id):
-            from_all = True if self.app.state == AppStates.EXPLORE else False
-            self.fetch_all_posts(from_all)
+            self.fetch_all_posts(shuffled=False,show_current_user=True)
 
     def fetch_post(self, post_id):
         post = self.app.get_post_by_id(post_id)
@@ -242,18 +263,21 @@ class PostViewWin(ScrolledWin):
 
         self.update_win()
 
-    def fetch_all_posts(self, from_all=False,max_for_fetch=10):
+    def fetch_all_posts(self, from_all=False,
+                        max_for_fetch=10,shuffled=True,show_current_user=False):
 
         for post in self.posts.values():
             post.can.destroy()
         self.posts.clear()
         posts = self.app.get_posts(self.app.temp_user_profile) if not from_all else self.app.get_all_posts()
-        random.shuffle(posts)
+        if shuffled:
+            random.shuffle(posts)
         for i, post in enumerate(posts):
             if i >= max_for_fetch:
                 break
-            if post.user_id == self.app.user.user_id and from_all:
-                continue
+            if not show_current_user:
+                if post.user_id == self.app.user.user_id and from_all:
+                    continue
             user_email = self.app.get_user_by_id(post.user_id).email
             likes_count = self.app.get_likes_by_post(post.post_id)
 
@@ -280,6 +304,7 @@ class ExploreWin(PostViewWin):
         self.add_post_entry = None
         self.post_btn = None
 
+    @loading_if_wait
     def refresh_feed(self):
         self.fetch_all_posts(from_all=True)
 
@@ -287,14 +312,15 @@ class ExploreWin(PostViewWin):
         self.app.state = AppStates.HOME
         self.app.update_content()
 
+    @loading_if_wait
     def load(self):
         super().load()
 
         ComponentCreator.create_text_label(self.second_frame, "Your Feed").pack(pady=5)
         ComponentCreator.create_button(self.second_frame, "HOME", self.move_to_home_page,
-                                                  "normal", size=(2, 10)).pack(pady=5)
+                                       "normal", size=(2, 10)).pack(pady=5)
         ComponentCreator.create_button(self.second_frame, "refresh", self.refresh_feed,
-                                                 "normal", size=(2, 10)).pack(pady=5)
+                                       "normal", size=(2, 10)).pack(pady=5)
         self.add_post_entry = ComponentCreator.create_entry(self.second_frame, self.post_data)
         self.add_post_entry.pack(pady=5)
         ComponentCreator.create_button(self.second_frame,
@@ -303,15 +329,17 @@ class ExploreWin(PostViewWin):
 
         self.fetch_all_posts(from_all=True)
 
+    @loading_if_wait
     def post_onclick(self):
         data = self.post_data.get()
         self.add_post_entry.delete(0, tk.END)
         if not data:
             return
         code, post = self.app.create_post(data)
+        print(f"post -> {post}")
         if not code:
             return
-        self.fetch_all_posts(from_all=True)
+        self.fetch_all_posts(from_all=True,shuffled=False,show_current_user=True)
         self.update_win()
 
 
@@ -325,6 +353,7 @@ class LikesViewWin(PostViewWin):
         self.app.state = AppStates.PROFILE
         self.app.update_content()
 
+    @loading_if_wait
     def load(self):
         super(LikesViewWin, self).load()
         ComponentCreator.create_button(self.second_frame, "back", self.on_back_click, "normal").pack()
@@ -336,16 +365,16 @@ class ProfileWin(PostViewWin):
         super(ProfileWin, self).__init__(win, geometry, app)
         self.follow_btn = None
         self.is_my_profile = False
-    # ONCLICK METHODS ********************************************
 
-    def follow_user_onclick(self,user):
+    # ONCLICK METHODS ********************************************
+    @loading_if_wait
+    def follow_user_onclick(self, user):
 
         r = self.app.follow_user(user.email)
         if "stop" != r['follow']:
             self.follow_btn.config(text="unfollow")
         else:
             self.follow_btn.config(text="follow")
-
 
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
@@ -355,7 +384,7 @@ class ProfileWin(PostViewWin):
         self.app.state = AppStates.LIKE_VIEW
         self.app.update_content()
 
-    def followers_view_onclick(self, flag,user):
+    def followers_view_onclick(self, flag, user):
         # flag can be 1 or 0
 
         if flag:
@@ -373,8 +402,6 @@ class ProfileWin(PostViewWin):
             self.app.temp_user_profile = email
             self.app.update_content(ignore_same_page=True)
 
-
-
         for i, u in enumerate(data):
             if i == 0:
                 continue
@@ -382,8 +409,7 @@ class ProfileWin(PostViewWin):
             print(u)
             ComponentCreator.create_user_label(pop_win, u.email, move_to_profile).pack(pady=5)
 
-
-
+    @loading_if_wait
     def load(self):
         super().load()
 
@@ -398,24 +424,22 @@ class ProfileWin(PostViewWin):
         ComponentCreator.create_text_label(self.second_frame,
                                            f"{self.app.temp_user_profile} Profile").pack(pady=pad)
 
-
-
         ComponentCreator.create_button(self.second_frame,
-                                                       f"FOLLOWERS {len(user.followers) - 1}",
-                                                       lambda: self.followers_view_onclick(1,user)
-                                                       , "normal").pack(pady=pad)
+                                       f"FOLLOWERS {len(user.followers) - 1}",
+                                       lambda: self.followers_view_onclick(1, user)
+                                       , "normal").pack(pady=pad)
         ComponentCreator.create_button(self.second_frame,
-                                                       f"FOLLOWING {len(user.following) - 1}",
-                                                       lambda: self.followers_view_onclick(0,user)
-                                                       , "normal").pack(pady=pad)
+                                       f"FOLLOWING {len(user.following) - 1}",
+                                       lambda: self.followers_view_onclick(0, user)
+                                       , "normal").pack(pady=pad)
         if not self.is_my_profile:
             if self.app.user.user_id in user.followers:
                 follow_btn_txt = "unfollow"
             else:
                 follow_btn_txt = "follow"
-            follow = lambda : self.follow_user_onclick(user)
+            follow = lambda: self.follow_user_onclick(user)
             self.follow_btn = ComponentCreator.create_button(self.second_frame, follow_btn_txt,
-                                            func=follow, state="normal")
+                                                             func=follow, state="normal")
             self.follow_btn.pack()
         else:
             ComponentCreator.create_button(
@@ -496,6 +520,7 @@ class HomeWin(BasicWin):
         self.app.state = AppStates.EXPLORE
         self.app.update_content()
 
+    @loading_if_wait
     def logout_onclick(self):
         if self.app.logout() == 1:
             self.app.state = AppStates.LOGIN
@@ -550,6 +575,7 @@ class RegisterWin(BasicWin):
         self.app.state = AppStates.LOGIN
         self.app.update_content()
 
+    @loading_if_wait
     def register_btn_onclick(self):
 
         response = self.app.register(self.email_var.get(),
@@ -625,11 +651,12 @@ class LoginWin(BasicWin):
         self.error_plot.place(x=400, y=50)
 
     def sign_up_page(self):
+
         self.app.state = AppStates.REGISTER
         self.app.update_content()
 
+    @loading_if_wait
     def login_btn_onclick(self):
-
         response = self.app.login(self.email_var.get(), self.password_var.get())
         if response == 1:
             self.win.after_cancel(self.validate_job)
@@ -638,9 +665,7 @@ class LoginWin(BasicWin):
 
         else:
             # show error
-
             self.plot_error(response)
-
             self.password_field.delete(0, tk.END)
 
     def validate_input(self):

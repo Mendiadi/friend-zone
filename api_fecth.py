@@ -201,4 +201,8 @@ class Services:
     def users_api(self):
         return self._users_api
 
-
+if __name__ == '__main__':
+    with PostsAPI(requests.session()) as s:
+        p = s.get_all_posts()
+        for i in p:
+            print(i.post_id)
