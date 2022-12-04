@@ -1,14 +1,16 @@
 import enum
 import functools
 import json
+import os
 import random
 import threading
 import time
 import tkinter
 import tkinter as tk
+import typing
 from collections import OrderedDict
 from tkinter import messagebox
-from tkinter.scrolledtext import ScrolledText
+import ctypes
 import requests
 
 import api_fecth
@@ -44,9 +46,7 @@ class ComponentCreator:
 
     @staticmethod
     def create_user_label(root, email, func):
-        # can = tk.Canvas(root,bg="red",height=50,width=100)
-        # label = tk.Label(can, text=email, font="none 12 bold", height=0, width=len(email),bg="red")
-        # label.place_configure(x=15, y=15)
+
 
         can = tk.Button(root, text=email, bg="red", border=0, font="none 12 bold", command=lambda: func(email))
         return can
@@ -120,6 +120,26 @@ class ComponentCreator:
         return label_post_created
 
     @staticmethod
+    def create_message_label(root, message: api_fecth.Message,y:int,
+                             side: typing.Literal['left', 'right']="left",
+                             ):
+        time = message.time[16:25:]
+        base = tk.Canvas(root,
+                        width=(len(message.text) + len(time) + 250) // 2, bg="cyan")
+        time_label = tk.Label(base, width=len(time),
+                              text=time, bg="cyan", font="none 10 bold")
+        label = tk.Text(base, height=5,
+                        width=len(message.text),
+                         bg="cyan")
+        label.insert(0.0,message.text)
+        label.config(state="disabled")
+        base.config(height=60)
+        label.place_configure(x=10, y=20)
+        time_label.place_configure(x=0, y=0)
+        base.pack_configure(anchor="e")
+        return base
+
+    @staticmethod
     def create_entry(root, text_var, hide=False):
 
         hide = None if not hide else "*"
@@ -168,7 +188,6 @@ class BasicWin:
             w.destroy()
 
     def update(self):
-
         self.win.update()
 
 
@@ -309,34 +328,6 @@ class PostViewWin(ScrolledWin):
         self.update_win()
 
 
-class ChatWin(BasicWin):
-    def __init__(self, win, geometry, app, chat_room):
-        super(ChatWin, self).__init__(win, geometry, app)
-        self.chat_room = chat_room
-        self.text_box = ScrolledText(self.win, width=100, height=20, state="disabled")
-        self.text_entry = ComponentCreator.create_entry(self.win, None)
-
-    def send_message_onclick(self):
-        self.app.send_message(self.app.temp_user_profile, self.text_entry.get(), self.chat_room.chat_id)
-        self.load_messages()
-        self.text_entry.delete(0, tk.END)
-
-    def load_messages(self):
-        self.text_box.config(state="normal")
-        msg_data = self.app.get_messages_by_chat(self.chat_room.chat_id)
-        only_text = [msg.text for msg in msg_data]
-        print(msg_data)
-        self.text_box.delete(0.0, tk.END)
-        self.text_box.insert(0.0, "\n".join(only_text))
-        self.text_box.config(state="disabled")
-
-    def load(self):
-        ComponentCreator.create_text_label(self.win, "Chat Room", font_size=15).pack()
-        self.load_messages()
-        self.text_box.pack()
-        self.text_entry.pack()
-        ComponentCreator.create_button(self.win, "Send", self.send_message_onclick, state="normal").pack()
-
 
 class ExploreWin(PostViewWin):
 
@@ -385,6 +376,61 @@ class ExploreWin(PostViewWin):
         self.update_win()
 
 
+class ChatWin(ScrolledWin):
+    def __init__(self, win, geometry, app, chat_room):
+        super(ChatWin, self).__init__(win, geometry, app)
+
+        self.chat_room = chat_room
+        self.headline = ComponentCreator.create_text_label(self.win, "Chat Room", font_size=15)
+        self.text_entry = ComponentCreator.create_entry(self.win, None)
+        self.send_btn = ComponentCreator.create_button(self.win,
+                                                       "Send", self.send_message_onclick, state="normal")
+        self.messages = []
+
+    @staticmethod
+    def create_chat_window(app):
+        root = tk.Tk()
+        receiver = app.get_user_by_email(app.temp_user_profile)
+
+        chat_room = app.create_chat(api_fecth.Chat(None, [app.user.user_id,
+                                                          receiver.user_id]))
+        chat_win = ChatWin(root, "500x500", app, chat_room)
+        return chat_win
+
+    def send_message_onclick(self):
+        self.app.send_message(self.app.temp_user_profile,
+                              self.text_entry.get(), self.chat_room.chat_id)
+        self.load_messages()
+        self.text_entry.delete(0, tk.END)
+
+    def load_messages(self):
+        for msg_label in self.messages:
+            msg_label.destroy()
+        self.messages.clear()
+        msg_data = self.app.get_messages_by_chat(self.chat_room.chat_id)
+
+        for i, msg in enumerate(msg_data):
+            if msg.sender == self.app.user.email:
+                l = ComponentCreator.create_message_label(self.second_frame,
+                                                          message=msg,y=i *10, side="right")
+            else:
+                l = ComponentCreator.create_message_label(self.second_frame,
+                                                          message=msg,y=i*10, side="left")
+            self.messages.append(l)
+            l.pack()
+        self.update_win()
+
+    def load(self):
+
+        self.headline.pack()
+        self.text_entry.pack()
+        self.send_btn.pack()
+
+        super().load()
+        self.second_frame.config(bg="deepskyblue")
+        self.load_messages()
+
+
 class LikesViewWin(PostViewWin):
     def __init__(self, win, geometry, app):
         super(LikesViewWin, self).__init__(win, geometry, app)
@@ -419,16 +465,8 @@ class ProfileWin(PostViewWin):
             self.follow_btn.config(text="follow")
 
     def message_room_onclick(self):
-        root = tk.Tk()
-        receiver = self.app.get_user_by_email(self.app.temp_user_profile)
+        ChatWin.create_chat_window(self.app).load()
 
-        chat_room = self.app.create_chat(api_fecth.Chat(None, [self.app.user.user_id,
-                                                               receiver.user_id]))
-
-        chat = ChatWin(root, "500x500", self.app, chat_room)
-        chat.load()
-
-        root.mainloop()
 
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
@@ -597,6 +635,8 @@ class HomeWin(BasicWin):
         logout_btn.place(x=470, y=30)
         ComponentCreator.create_text_label(self.win, "Search for Users", "cyan", font_size=17).place(x=430, y=110)
         self.search_bar.place(x=370, y=150)
+
+
 
 
 class RegisterWin(BasicWin):
@@ -776,10 +816,11 @@ class App:
         session = requests.session()
         self.api_fetch = api_fecth.Services(session)
 
+
     # API CALLS METHODS *****************************************************
 
     @require_connection
-    def get_messages_by_chat(self, chat_id):
+    def get_messages_by_chat(self, chat_id) -> list[api_fecth.Message]:
         with self.api_fetch.chat_api as session:
             res = session.get_messages_by_chat(chat_id)
             print(res)
@@ -944,16 +985,17 @@ class App:
 
     # UPDATE GUI METHODS *********************************************
 
-    def update_content(self, ignore_same_page=False):
-        threading.Thread(target=self.state_gui, args=(ignore_same_page,), daemon=True).start()
+
+
 
     def switch_page(self, page: type, ignore_same_page=False):
         if type(self.root) != page or ignore_same_page:
             self.root.kill()
+
             self.root = page(self.win, self.MAXSIZE, self)
             self.root.load()
 
-    def state_gui(self, ignore_same_page=False):
+    def update_content(self, ignore_same_page=False):
 
         if self.state == AppStates.EXPLORE:
             page = ExploreWin
@@ -982,5 +1024,10 @@ class App:
 
 def run_app():
     win = tk.Tk()
+
     App(win)
     win.mainloop()
+
+
+if __name__ == '__main__':
+    ...
