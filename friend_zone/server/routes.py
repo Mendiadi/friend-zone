@@ -1,12 +1,10 @@
-import functools
 import hashlib
-import json
 
 import flask, flask_login
 
 # my imports
-import configure
-import database
+from friend_zone.scripts import configure
+from friend_zone.server import database
 
 if not configure.app_config:
     print("cant run")
@@ -286,5 +284,3 @@ def get_chat(chat_id):
     return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
 
 
-if __name__ == '__main__':
-    app.run(debug=True, host=configure.app_config.net_host, port=configure.app_config.port)

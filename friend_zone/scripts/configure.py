@@ -1,25 +1,11 @@
 import dataclasses
-import json
-import yaml
+import os
 
-PATH_CONFIGURE = "app_config.yaml"
+from friend_zone.client.utils import parse_yaml
 
-
-def parse_yaml(path: str):
-    with open(path, "r") as stream:
-        try:
-            return yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+PATH_CONFIGURE = "../app_config.yaml"
 
 
-def load_json(path):
-    try:
-        with open(PATH_CONFIGURE, "r") as f:
-            j = json.load(f)
-            return j
-    except(FileNotFoundError):
-        return None
 
 
 @dataclasses.dataclass
