@@ -13,10 +13,10 @@ def main():
 import tkinter as tk
 import tkinter.ttk as ttk
 from ctypes import windll
-
-GWL_EXSTYLE = -20
-WS_EX_APPWINDOW = 0x00040000
-WS_EX_TOOLWINDOW = 0x00000080
+#
+# GWL_EXSTYLE = -20
+# WS_EX_APPWINDOW = 0x00040000
+# WS_EX_TOOLWINDOW = 0x00000080
 
 # def set_appwindow(root):
 #     windll.user32

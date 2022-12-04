@@ -92,7 +92,8 @@ class ComponentCreator:
         txt.insert(0.0, post.text, tk.END)
         txt.config(state="disabled")
         txt.place_configure(x=50, y=50)
-        like_btn = tk.Button(can, text="like", bg=color_bg2, command=lambda: func_like(post.post_id),
+        like_btn = tk.Button(can, text="like", bg=color_bg2,
+                             command=lambda: func_like(post.post_id),
                              border=0, font="none 10 bold")
         like_btn.place_configure(x=468, y=178)
         time_label = tk.Label(can, text=f"{post.time}", width=len(post.time), bg=color_bg2,
@@ -104,39 +105,54 @@ class ComponentCreator:
         like_count.place_configure(x=1, y=180)
 
         if func_del:
-            btn = tk.Button(can, text="X", command=lambda: func_del(post.post_id), font="none 12 bold", bg=color_bg2,
+            btn = tk.Button(can, text="X", command=lambda: func_del(post.post_id),
+                            font="none 12 bold", bg=color_bg2,
                             border=0
-                            , activebackground="blue", highlightbackground="blue", highlightcolor="blue", fg="red")
+                            , activebackground="blue", highlightbackground="blue",
+                            highlightcolor="blue", fg="red")
             btn.place_configure(x=480, y=5)
         if func_edit:
-            btn = tk.Button(can, text="E", command=lambda: func_edit(post), font="none 12 bold", bg=color_bg2, border=0
-                            , activebackground="blue", highlightbackground="blue", highlightcolor="blue")
+            btn = tk.Button(can, text="E", command=lambda: func_edit(post),
+                            font="none 12 bold", bg=color_bg2, border=0
+                            , activebackground="blue", highlightbackground="blue",
+                            highlightcolor="blue")
             btn.place_configure(x=480, y=40)
         label.place_configure(x=0, y=0)
         can2.place_configure(x=10, y=10)
         can.pack_configure(padx=250, pady=50)
-        label_post_created = PostComponent(can, can2, label, txt, like_count, like_btn, post, time_label)
+        label_post_created = PostComponent(can, can2, label, txt, like_count,
+                                           like_btn, post, time_label)
 
         return label_post_created
 
     @staticmethod
-    def create_message_label(root, message: api_fecth.Message,y:int,
-                             side: typing.Literal['left', 'right']="left",
+    def create_message_label(root, message: api_fecth.Message,
+                             side: typing.Literal['e', 'w'],
                              ):
+
+
         time = message.time[16:25:]
+
         base = tk.Canvas(root,
-                        width=(len(message.text) + len(time) + 250) // 2, bg="cyan")
+                        width=200,height=200, bg="cyan" if side == "w" else "deepskyblue")
         time_label = tk.Label(base, width=len(time),
-                              text=time, bg="cyan", font="none 10 bold")
+                              text=time, font="none 10 bold")
         label = tk.Text(base, height=5,
                         width=len(message.text),
-                         bg="cyan")
+                         bg="cyan",border=0)
         label.insert(0.0,message.text)
         label.config(state="disabled")
         base.config(height=60)
         label.place_configure(x=10, y=20)
         time_label.place_configure(x=0, y=0)
-        base.pack_configure(anchor="e")
+
+
+        label.config(bg="cyan" if side == "w" else "deepskyblue")
+        time_label.config(bg="cyan" if side == "w" else "deepskyblue")
+        base.pack_configure(anchor=side,fill=tk.BOTH,
+                            padx=0 if side =="w" else 350,
+                           )
+
         return base
 
     @staticmethod
@@ -403,6 +419,8 @@ class ChatWin(ScrolledWin):
         self.load_messages()
         self.text_entry.delete(0, tk.END)
 
+
+
     def load_messages(self):
         for msg_label in self.messages:
             msg_label.destroy()
@@ -410,24 +428,25 @@ class ChatWin(ScrolledWin):
         msg_data = self.app.get_messages_by_chat(self.chat_room.chat_id)
 
         for i, msg in enumerate(msg_data):
+
             if msg.sender == self.app.user.email:
                 l = ComponentCreator.create_message_label(self.second_frame,
-                                                          message=msg,y=i *10, side="right")
+                                                          message=msg, side="e")
             else:
                 l = ComponentCreator.create_message_label(self.second_frame,
-                                                          message=msg,y=i*10, side="left")
+                                                          message=msg, side="w")
             self.messages.append(l)
-            l.pack()
         self.update_win()
 
     def load(self):
-
+        self.win.config(bg="cyan")
         self.headline.pack()
         self.text_entry.pack()
         self.send_btn.pack()
 
         super().load()
-        self.second_frame.config(bg="deepskyblue")
+
+
         self.load_messages()
 
 
