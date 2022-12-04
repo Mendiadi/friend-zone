@@ -28,8 +28,16 @@ class likes:
         self.user_id = user_id
         self.post_id = post_id
 
+
+class chat:
+    def __init__(self, chat_id, members):
+        self.chat_id = chat_id
+        self.members = members
+
+
 class message:
-    def __init__(self,msg_id,sender,receiver,time,text):
+    def __init__(self, msg_id, sender, receiver, time, text, chat_id):
+        self.chat_id = chat_id
         self.msg_id = msg_id
         self.sender = sender
         self.receiver = receiver
@@ -53,8 +61,8 @@ class DataBase:
         self.user = app_conf.user
         self.password = app_conf.password
         self.database = app_conf.database
-        self._configure = {"host":self.host,"user":self.user,"password":self.password,
-                           "database":self.database}
+        self._configure = {"host": self.host, "user": self.user, "password": self.password,
+                           "database": self.database}
 
         with simpleSQL.connect(**self._configure,
                                create_and_ignore=True) as db:
@@ -70,16 +78,21 @@ class DataBase:
             like_table = likes(db.types.column(db.types.integer(), nullable=False)
                                , db.types.column(db.types.integer(), nullable=False))
 
-            message_table = message(db.types.column(db.types.integer(),nullable=False,auto_increment=True),
-                db.types.column(db.types.varchar(50),nullable=False),
-                db.types.column(db.types.varchar(50), nullable=False),
-                db.types.column(db.types.integer()),
-                db.types.column(db.types.varchar(100),nullable=False)
-            )
+            chat_table = chat(db.types.column(db.types.integer(), nullable=False, auto_increment=True),
+                              db.types.column(db.types.varchar(100), nullable=False, unique=True))
 
+            message_table = message(db.types.column(db.types.integer(), nullable=False, auto_increment=True),
+
+                                    db.types.column(db.types.varchar(50), nullable=False),
+                                    db.types.column(db.types.varchar(50), nullable=False),
+                                    db.types.column(db.types.integer()),
+                                    db.types.column(db.types.varchar(100), nullable=False),
+                                    db.types.column(db.types.integer(), nullable=False)
+
+                                    )
 
             db.create_table(user, user_table, primary_key="user_id", auto_increment_value=1000)
-            db.create_table(post, post_table,"post_id",
+            db.create_table(post, post_table, "post_id",
                             foreign_key="user_id", reference=("user", "user_id"),
                             ondelete=True, onupdate=True)
             db.create_table(likes, like_table, foreign_key="post_id", reference=("post", "post_id")
@@ -87,17 +100,20 @@ class DataBase:
             db.update_column_to_date("post", "time", default=True, on_update=True)
             db.query_alter_table_forgkey("likes", foreign_key="user_id", reference=("user", "user_id"),
                                          ondelete=True, onupdate=True)
-            db.create_table(message,message_table,primary_key="msg_id")
-            db.update_column_to_date("message","time",True)
+            db.create_table(chat, chat_table, primary_key="chat_id")
+            db.create_table(message, message_table, primary_key="msg_id",
+                            foreign_key="chat_id", reference=("chat", "chat_id"),
+                            ondelete=True)
+
+            db.update_column_to_date("message", "time", True)
             db.commit()
             self.AUTO_INC_ = db.AUTO_INC
             print(f"[LOG] init DATABASE done success...")
 
-    def update_user(self,user_):
+    def update_user(self, user_):
         with simpleSQL.connect(**self._configure) as db:
-            db.query_update_table(user,user_)
+            db.query_update_table(user, user_)
             db.commit()
-
 
     def add_user(self, user_obj: user):
         with simpleSQL.connect(**self._configure) as db:
@@ -157,7 +173,7 @@ class DataBase:
 
     def delete_like(self, like):
         with simpleSQL.connect(**self._configure) as db:
-    # like_ = db.query_filters(post, f"post_id = \"{like.post_id}\" AND user_email = \"{like.user_email}\""
+            # like_ = db.query_filters(post, f"post_id = \"{like.post_id}\" AND user_email = \"{like.user_email}\""
             #                          , first=True)
 
             db.delete(like)
@@ -210,9 +226,14 @@ class DataBase:
 
         return post_
 
-    def add_message(self,msg):
+    def get_chat(self, chat_id):
         with simpleSQL.connect(**self._configure) as db:
-            db.insert_to(message,msg)
+            chat_ = db.query_filter_by(chat, "chat_id", chat_id, first=True)
+        return chat_
+
+    def add_message(self, msg):
+        with simpleSQL.connect(**self._configure) as db:
+            db.insert_to(message, msg)
             db.commit()
         return msg
 
@@ -221,9 +242,19 @@ class DataBase:
             res = db.query_all(message)
         return res
 
-    def get_messages_by_chat(self,user_a,user_b):
+    def create_chat(self, data):
         with simpleSQL.connect(**self._configure) as db:
-            res = db.query_filters(message,filters=f"sender = \"{user_a}\" and receiver = \"{user_b}\"")
+            db.insert_to(chat, data)
+            db.commit()
+
+    def get_chat_by_members(self, members):
+        with simpleSQL.connect(**self._configure) as db:
+            chat_ = db.query_filter_by(chat, "members", members, first=True)
+        return chat_
+
+    def get_messages_by_chat(self, chat_id):
+        with simpleSQL.connect(**self._configure) as db:
+            res = db.query_filter_by(message, filter_="chat_id", filter_value=chat_id)
         return res
 
     def update_post(self, data, post_id):

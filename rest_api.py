@@ -1,5 +1,7 @@
 import functools
 import hashlib
+import json
+
 import flask, flask_login
 
 # my imports
@@ -222,7 +224,8 @@ def get_like_by_email(user_email):
     return flask.make_response(flask.jsonify({"likes": []}), 200)
 
 
-@app.route("/api/message/",methods=['POST'])
+@app.route("/api/chat/message",methods=['POST'])
+@flask_login.login_required
 def send_message():
     msg = database.message(**flask.request.json)
 
@@ -230,16 +233,55 @@ def send_message():
         return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
     if flask_login.current_user.email != msg.sender:
         return flask.make_response(flask.jsonify({"error": "you not logged in session"}), 400)
+    if not db.get_chat(msg.chat_id):
+        return flask.make_response(flask.jsonify({"error": "chat not found"}), 404)
+
     msg.time = db.AUTO_INC()
     msg.msg_id = db.AUTO_INC()
     msg = db.add_message(msg)
 
     return flask.make_response(flask.jsonify({"message": msg.__dict__}), 200)
 
-@app.route("/api/message/<string:user_a>/<string:user_b>")
-def get_chat(user_a,user_b):
-    if db.get_user(user_a) and db.get_user(user_b):
-        chat = db.get_messages_by_chat(user_a,user_b)
+@app.route("/api/chat/message/<int:chat_id>")
+def get_messages_by_chat(chat_id):
+    res = db.get_messages_by_chat(chat_id)
+    if res:
+        return flask.make_response(flask.jsonify({"messages": [msg.__dict__ for msg in res]}), 200)
+    return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
+
+@app.route("/api/chat",methods=["post"])
+def create_chat():
+    chat_data = database.chat (**flask.request.json)
+
+    for mem in chat_data.members:
+
+        if not db.get_user_by_id(mem):
+            return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
+    chat_data.chat_id = db.AUTO_INC()
+    print(chat_data.__dict__)
+    chat_from_db = db.get_chat_by_members(chat_data.members)
+
+    if not chat_from_db:
+
+        chat_data.members.reverse()
+        chat_from_db = db.get_chat_by_members(chat_data.members)
+
+        if chat_from_db:
+            print(chat_from_db.__dict__, "*" * 100, "reversed")
+            return flask.make_response(flask.jsonify({"chat": chat_from_db.__dict__}), 200)
+        print(chat_from_db)
+        db.create_chat(chat_data)
+        chat_data = db.get_chat_by_members(chat_data.members)
+        print(chat_data.__dict__, "*" * 100, "created new")
+        return flask.make_response(flask.jsonify({"chat": chat_data.__dict__}), 201)
+    print(chat_from_db.__dict__, "*" * 100, "reversed")
+    return flask.make_response(flask.jsonify({"chat": chat_from_db.__dict__}), 200)
+
+
+@app.route("/api/chat/<int:chat_id>")
+def get_chat(chat_id):
+    chat = db.get_chat(chat_id)
+    if chat:
         return flask.make_response(flask.jsonify({"chat":[msg.__dict__ for msg in chat]}), 200)
     return flask.make_response(flask.jsonify({"error": "user not found"}), 404)
 

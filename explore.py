@@ -4,6 +4,7 @@ import json
 import random
 import threading
 import time
+import tkinter
 import tkinter as tk
 from collections import OrderedDict
 from tkinter import messagebox
@@ -19,7 +20,6 @@ def load_assets():
 
 
 class AppStates(enum.Enum):
-
     HOME = 0
     LOGIN = 1
     EXPLORE = 2
@@ -167,6 +167,10 @@ class BasicWin:
         for w in self.win.winfo_children():
             w.destroy()
 
+    def update(self):
+
+        self.win.update()
+
 
 class ScrolledWin(BasicWin):
     def __init__(self, win, geometry, app):
@@ -176,8 +180,11 @@ class ScrolledWin(BasicWin):
         super(ScrolledWin, self).__init__(win, geometry, app)
 
     def update_win(self):
-        self.win.update()
-        self.my_canvas.configure(scrollregion=self.my_canvas.bbox("all"))
+        super().update()
+        try:
+            self.my_canvas.configure(scrollregion=self.my_canvas.bbox("all"))
+        except tkinter.TclError as e:
+            print(e)
 
     def load(self):
         self.main_frame = tk.Frame(self.win)
@@ -301,20 +308,22 @@ class PostViewWin(ScrolledWin):
 
         self.update_win()
 
+
 class ChatWin(BasicWin):
-    def __init__(self, win, geometry, app):
+    def __init__(self, win, geometry, app, chat_room):
         super(ChatWin, self).__init__(win, geometry, app)
-        self.text_box = ScrolledText(self.win,width=100,height=20,state="disabled")
-        self.text_entry = ComponentCreator.create_entry(self.win,None)
+        self.chat_room = chat_room
+        self.text_box = ScrolledText(self.win, width=100, height=20, state="disabled")
+        self.text_entry = ComponentCreator.create_entry(self.win, None)
 
     def send_message_onclick(self):
-        self.app.send_message(self.app.temp_user_profile,self.text_entry.get())
+        self.app.send_message(self.app.temp_user_profile, self.text_entry.get(), self.chat_room.chat_id)
         self.load_messages()
-        self.text_entry.delete(0,tk.END)
+        self.text_entry.delete(0, tk.END)
 
     def load_messages(self):
         self.text_box.config(state="normal")
-        msg_data = self.app.get_chat(self.app.user.email, self.app.temp_user_profile)
+        msg_data = self.app.get_messages_by_chat(self.chat_room.chat_id)
         only_text = [msg.text for msg in msg_data]
         print(msg_data)
         self.text_box.delete(0.0, tk.END)
@@ -322,11 +331,11 @@ class ChatWin(BasicWin):
         self.text_box.config(state="disabled")
 
     def load(self):
-        ComponentCreator.create_text_label(self.win,"Chat Room",font_size=15).pack()
+        ComponentCreator.create_text_label(self.win, "Chat Room", font_size=15).pack()
         self.load_messages()
         self.text_box.pack()
         self.text_entry.pack()
-        ComponentCreator.create_button(self.win,"Send",self.send_message_onclick,state="normal").pack()
+        ComponentCreator.create_button(self.win, "Send", self.send_message_onclick, state="normal").pack()
 
 
 class ExploreWin(PostViewWin):
@@ -359,8 +368,6 @@ class ExploreWin(PostViewWin):
                                        text="POST", func=self.post_onclick,
                                        state="normal", font="none 15").pack(pady=10)
         super().load()
-
-
 
         self.fetch_all_posts(from_all=True)
 
@@ -413,10 +420,16 @@ class ProfileWin(PostViewWin):
 
     def message_room_onclick(self):
         root = tk.Tk()
-        chat = ChatWin(root,"500x500",self.app)
+        receiver = self.app.get_user_by_email(self.app.temp_user_profile)
+
+        chat_room = self.app.create_chat(api_fecth.Chat(None, [self.app.user.user_id,
+                                                               receiver.user_id]))
+
+        chat = ChatWin(root, "500x500", self.app, chat_room)
         chat.load()
 
         root.mainloop()
+
     def go_back_onclick(self):
         self.app.state = AppStates.HOME
         self.app.update_content()
@@ -766,18 +779,32 @@ class App:
     # API CALLS METHODS *****************************************************
 
     @require_connection
-    def get_chat(self,user_a,user_b):
-        with self.api_fetch.users_api as session:
-            res = session.get_messages_by_chat(user_a,user_b)
+    def get_messages_by_chat(self, chat_id):
+        with self.api_fetch.chat_api as session:
+            res = session.get_messages_by_chat(chat_id)
+            print(res)
         return res
 
     @require_connection
-    def send_message(self,receiver,text):
-        with self.api_fetch.users_api as session:
-            res = session.send_message(api_fecth.Message(None,self.user.email,
-                                                   receiver,None,text))
+    def get_chat(self, chat_id):
+        with self.api_fetch.chat_api as session:
+            res = session.get_chat(chat_id)
             print(res)
+        return res
 
+    @require_connection
+    def create_chat(self, chat):
+        with self.api_fetch.chat_api as session:
+            res = session.create_chat(chat)
+            print(res)
+        return res
+
+    @require_connection
+    def send_message(self, receiver, text, chat_id):
+        with self.api_fetch.chat_api as session:
+            res = session.send_message(api_fecth.Message(chat_id, None, self.user.email,
+                                                         receiver, None, text))
+            print(res)
 
     @require_connection
     def search(self, query):

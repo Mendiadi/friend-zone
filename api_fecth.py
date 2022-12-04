@@ -51,13 +51,22 @@ class User(Model):
     followers: list[int]
     following: list[int]
 
+
+@dataclasses.dataclass
+class Chat(Model):
+    chat_id: int
+    members: list
+
+
 @dataclasses.dataclass
 class Message(Model):
-    msg_id:int
-    sender:str
-    receiver:str
-    time:str
-    text:str
+    chat_id: int
+    msg_id: int
+    sender: str
+    receiver: str
+    time: str
+    text: str
+
 
 class API:
     def __init__(self, session: requests.Session):
@@ -72,22 +81,23 @@ class API:
         self._session.close()
 
     def test_connection(self):
-        print("test connection begin..",end=" -> ")
-        return_code:int
+        print("test connection begin..", end=" -> ")
+        return_code: int
         try:
-            print("try to connect...",end=" -> ")
+            print("try to connect...", end=" -> ")
             conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             conn.connect(("localhost", 5000))
         except ConnectionError:
-            print("connection failed...",end=" -> ")
+            print("connection failed...", end=" -> ")
             return_code = 0
         else:
-            print("connection success... -> close connection testing",end=" -> ")
+            print("connection success... -> close connection testing", end=" -> ")
             conn.close()
             return_code = 1
         finally:
             print(f"done test connection with code {return_code}")
             return return_code
+
 
 class UsersAPI(API):
     def __init__(self, session):
@@ -123,25 +133,12 @@ class UsersAPI(API):
 
     def follow_user(self, email):
         user = self.get_user_by_email(email)
-        res = self._session.post(self.base_url + f"/user/follow/{user.user_id}",data='{}')
+        res = self._session.post(self.base_url + f"/user/follow/{user.user_id}", data='{}')
         return res.text if not res.ok else res.json()
 
     def logout(self):
         res = self._session.get(self.base_url + "/logout")
         return (0, res.text) if not res.ok else (1, res.text)
-
-    def send_message(self,msg):
-        res = self._session.post(self.base_url + "/message",json=msg.to_json())
-        return res
-
-    def get_messages_by_chat(self,user_a,user_b):
-        res = self._session.get(self.base_url + f"/message/{user_a}/{user_b}")
-        if res.ok:
-            msgs = []
-            for msg in res.json()['chat']:
-                msgs.append(Message(**msg))
-            return msgs
-        return []
 
 
 class PostsAPI(API):
@@ -208,10 +205,42 @@ class PostsAPI(API):
         return res.text if not res.ok else 1
 
 
+class ChatAPI(API):
+
+    def __init__(self, session):
+        super().__init__(session)
+
+    def send_message(self, msg):
+        res = self._session.post(self.base_url + "/chat/message", json=msg.to_json())
+        return res.text
+
+    def get_chat(self, chat_id):
+        res = self._session.get(self.base_url + f"/chat/{chat_id}")
+        return Chat(**res.json()) if res.ok else None
+
+    def get_messages_by_chat(self, chat_id):
+        res = self._session.get(self.base_url + f"/chat/message/{chat_id}")
+        if res.ok:
+            msgs = []
+            for msg in res.json()['messages']:
+                msgs.append(Message(**msg))
+            return msgs
+        return []
+
+    def create_chat(self, chat: Chat):
+        res = self._session.post(self.base_url + "/chat", json=chat.to_json())
+        return Chat(**res.json()['chat']) if res.ok else res.text
+
+
 class Services:
     def __init__(self, session):
         self._users_api = UsersAPI(session)
         self._posts_api = PostsAPI(session)
+        self._chat_api = ChatAPI(session)
+
+    @property
+    def chat_api(self):
+        return self._chat_api
 
     @property
     def posts_api(self):
@@ -220,6 +249,7 @@ class Services:
     @property
     def users_api(self):
         return self._users_api
+
 
 if __name__ == '__main__':
     with PostsAPI(requests.session()) as s:
