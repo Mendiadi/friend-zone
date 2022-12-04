@@ -4,19 +4,19 @@
 db:
 
   host: # your db host url
-      null
+      "localhost"
   user: # database user
-      null
+      "root"
   password: # database password
-      null
+      "7874"
   database: # database name
-      null
+      "fbclone"
 
 net:
   port: # port to listen
-      null
+      5000
   host: # url host
-      null
+      127.0.0.1
   name: # app name
-      null
+      fbclone
 

@@ -20,7 +20,8 @@ def parse_yaml(path: str):
         with open(path, "r") as stream:
             return yaml.safe_load(stream)
     except FileNotFoundError:
-        with open(os.path.join("friend_zone",path),"r") as stream:
+        print(os.path.join(os.getcwd(),path))
+        with open(os.path.join(os.getcwd(),path),"r") as stream:
             return yaml.safe_load(stream)
 
 

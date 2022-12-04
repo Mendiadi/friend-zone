@@ -1,3 +1,4 @@
+import os.path
 import tkinter as tk
 from typing import Literal
 
@@ -6,7 +7,7 @@ from friend_zone.api.models import Message
 
 
 def load_assets():
-    img = tk.PhotoImage(file="assets/bg_login.png")
+    img = tk.PhotoImage(file=os.path.join("assets","bg_login.png"))
     return img
 
 class ComponentCreator:

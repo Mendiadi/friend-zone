@@ -3,7 +3,7 @@ import os
 
 from friend_zone.client.utils import parse_yaml
 
-PATH_CONFIGURE = "../app_config.yaml"
+PATH_CONFIGURE = "app_config.yaml"
 
 
 
