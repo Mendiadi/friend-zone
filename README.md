@@ -23,6 +23,7 @@ a python socaiety desktop application based tkinter and flask
 * verified loading cursor if waiting detected
 * nice gui elements
 * handle every user invalid edge cases
+* secure user information stored
 
 # Tools
 * mysql server

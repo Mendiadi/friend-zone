@@ -1,6 +1,10 @@
-from friend_zone.server.routes import app, configure
+import os
+
+from friend_zone.server.routes import app
+from friend_zone.scripts.configure import app_config
 
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host=configure.app_config.net_host, port=configure.app_config.port)
+
+    app.run(debug=True, host=app_config.net_host, port=app_config.port)

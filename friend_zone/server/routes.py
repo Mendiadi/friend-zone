@@ -9,6 +9,8 @@ from friend_zone.server import database
 if not configure.app_config:
     print("cant run")
     exit(-1)
+
+
 app = flask.Flask(configure.app_config.name)
 app.secret_key = "secret"
 
